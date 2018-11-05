@@ -1,0 +1,68 @@
+[env]
+DOCKER_CROSS_WORK_DIR="/work"
+#DOCKER_CROSS_IMAGE_NAME="windows-x64"
+#DOCKER_CROSS_TRIPLE="x86_64-pc-windows-gnu"
+#CROSS_TRIPLE="x86_64-pc-windows-gnu"
+# DOCKER_CROSS_IMAGE_NAME="android-arm64"
+# DOCKER_CROSS_TRIPLE="aarch64-linux-android"
+# CROSS_TRIPLE="aarch64-linux-android"
+# DOCKER_CROSS_IMAGE_NAME="linux-arm64"
+# DOCKER_CROSS_TRIPLE="aarch64-unknown-linux-gnu"
+# CROSS_TRIPLE="aarch64-unknown-linux-gnu"
+DOCKER_CROSS_IMAGE_NAME="linux-x64"
+DOCKER_CROSS_TRIPLE="x86_64-unknown-linux-gnu"
+CROSS_TRIPLE="x86_64-unknown-linux-gnu"
+DOCKER_CROSS_SCRIPT_NAME="dockcross"
+DOCKER_CROSS_SCRIPT="${CARGO_MAKE_WORKING_DIRECTORY}/${DOCKER_CROSS_SCRIPT_NAME}"
+
+[tasks.format]
+install_crate = "rustfmt"
+command = "cargo"
+args = ["fmt", "--", "--write-mode=overwrite"]
+
+[tasks.clean]
+command = "cargo"
+args = ["clean"]
+
+[tasks.dockercross_download]
+script = [
+	"docker pull dockcross/${DOCKER_CROSS_IMAGE_NAME}"
+]
+
+[tasks.dockercross_create_script]
+script = [
+	"docker run --rm dockcross/${DOCKER_CROSS_IMAGE_NAME}> ./${DOCKER_CROSS_SCRIPT_NAME}",
+	"chmod +x ./${DOCKER_CROSS_SCRIPT_NAME}"
+]
+
+[tasks.build_native]
+script = [
+"cross build --release --target ${CROSS_TRIPLE}"
+]
+
+[tasks.mv_native_lib]
+script = ["cp target/${CROSS_TRIPLE}/release/libprivate_box_native.a target/release"]
+
+[tasks.configure_napi_binding]
+script = [
+"rm Makefile",
+"rm CMakeCache.txt",
+"rm -rf CMakeFiles",
+"${DOCKER_CROSS_SCRIPT} cmake ."
+]
+dependencies = ["mv_native_lib"]
+
+[tasks.build_napi_binding]
+script = ["${DOCKER_CROSS_SCRIPT} make"]
+dependencies = ["configure_napi_binding"]
+
+[tasks.mv_napi_binding]
+command = "mv"
+args = ["libbinding.so", "binding.node"]
+dependencies = ["build_napi_binding"]
+
+[tasks.my-flow]
+dependencies = [
+		"build_native",
+		"mv_napi_binding"
+]

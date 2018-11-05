@@ -1,0 +1,13 @@
+[package]
+name = "ssb-legacy-msg-js"
+version = "1.0.0"
+authors = ["Piet Geursen <pietgeursen@gmail.com>"]
+license = "AGPL3"
+
+[lib]
+name = "ssb_legacy_msg_js"
+crate-type = ["staticlib"]
+
+[dependencies]
+error-chain = "0.12.0"
+ssb-legacy-msg = { git = "https://github.com/ssbrs/ssb-legacy-msg"}

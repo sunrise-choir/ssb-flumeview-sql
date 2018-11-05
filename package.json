@@ -1,0 +1,34 @@
+{
+  "name": "private-box-native",
+  "version": "0.2.1",
+  "description": "Node bindings to private-box-rs",
+  "main": "index.js",
+  "author": "Piet Geursen <pietgeursen@gmail.com>",
+  "license": "MIT",
+  "binary": {
+    "napi_versions": [
+      3
+    ]
+  },
+  "dependencies": {
+    "prebuild-install": "^5.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pietgeursen/private-box-native.git"
+  },
+  "scripts": {
+    "install": "prebuild-install -r napi",
+    "build-rs": "./build-native.sh",
+    "prebuild": "prebuild -r napi --include-regex '\\.(node|so)$'",
+    "build-all": "npm run build-rs && npm run prebuild",
+    "test": "tape test/*.js"
+  },
+  "devDependencies": {
+    "marky": "^1.2.0",
+    "prebuild": "^8.1.0",
+    "private-box": "^0.2.1",
+    "pull-stream": "^3.6.1",
+    "tape": "^4.8.0"
+  }
+}
