@@ -255,8 +255,16 @@ dependencies = [
 name = "ssb-legacy-msg-js"
 version = "1.0.0"
 dependencies = [
+ "base64 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "encode_unicode 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ryu-ecmascript 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "ssb-legacy-msg 0.1.0 (git+https://github.com/ssbrs/ssb-legacy-msg)",
+ "ssb-legacy-msg-data 0.1.0 (git+https://github.com/ssbrs/legacy-msg-data)",
+ "strtod 0.0.1 (git+https://github.com/ssbrs/strtod)",
 ]
 
 [[package]]

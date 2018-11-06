@@ -11,3 +11,12 @@ crate-type = ["staticlib"]
 [dependencies]
 error-chain = "0.12.0"
 ssb-legacy-msg = { git = "https://github.com/ssbrs/ssb-legacy-msg"}
+ssb-legacy-msg-data = { git = "https://github.com/ssbrs/legacy-msg-data" }
+serde = "1.0.80"
+serde_derive = "1.0.80"
+base64 = "0.9.3"
+indexmap = "1.0.1"
+ryu-ecmascript = "0.1.1"
+# strtod = "0.0.2"
+strtod = { git = "https://github.com/ssbrs/strtod" }
+encode_unicode = "0.3.3"
