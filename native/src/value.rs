@@ -36,6 +36,7 @@ pub enum Value {
     // An [object](https://spec.scuttlebutt.nz/datamodel.html#objects).
     //Object(napi_value),
 }
+
 //
 //impl Serialize for Value {
 //    #[inline]
