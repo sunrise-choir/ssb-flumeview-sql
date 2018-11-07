@@ -8,6 +8,21 @@
 - what should actually get returned by from_slice?  
 
 
+- how would you serialize a napi value?
+
+```
+fn to_string(env: napi_env, callbackinfo: info){
+  value: napi_value = ... // get arg 0
+
+  val = match napi_get_valuetype(env, value) {
+    napi_valuetype_napi_null => Value::Null(value) 
+  };
+
+  val.to_vec() //calls the serializer?
+  ... //shove it into a buffer or a string as a napi_value
+}
+```
+
 Some example json
 ```
 {

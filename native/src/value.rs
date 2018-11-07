@@ -14,6 +14,7 @@ use serde::{
 
 use ssb_legacy_msg_data::{LegacyF64, legacy_length};
 use napi_sys::*;
+use napi::*;
 
 // The maximum capacity of entries to preallocate for arrays and objects. Even if malicious input
 // claims to contain a much larger collection, only this much memory will be blindly allocated.
@@ -24,9 +25,9 @@ static MAX_ALLOC: usize = 2048;
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Value {
     // The [null](https://spec.scuttlebutt.nz/datamodel.html#null) value.
-    //Null(napi_value),
+    Null(napi_value, napi_env),
     // A [boolean](https://spec.scuttlebutt.nz/datamodel.html#booleans).
-    Bool(napi_value, bool),
+    Bool(napi_value, napi_env),
     // A [float](https://spec.scuttlebutt.nz/datamodel.html#floats).
     //Float(napi_value),
     // A [string](https://spec.scuttlebutt.nz/datamodel.html#strings).
@@ -34,38 +35,52 @@ pub enum Value {
     // An [array](https://spec.scuttlebutt.nz/datamodel.html#arrays).
     //Array(napi_value),
     // An [object](https://spec.scuttlebutt.nz/datamodel.html#objects).
-    //Object(napi_value),
+    Object(napi_value, napi_env),
 }
 
-//
-//impl Serialize for Value {
-//    #[inline]
-//    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//    where
-//        S: Serializer,
-//    {
-//        match *self {
-//            //Value::Null => serializer.serialize_unit(),
-//            Value::Bool(b) => serializer.serialize_bool(b.value),
-//            //Value::Float(f) => serializer.serialize_f64(f.value.into()),
-//            //Value::String(ref s) => serializer.serialize_str(&s.value),
-//            //Value::Array(ref v) => {
-//            //    let mut s = serializer.serialize_seq(Some(v.value.len()))?;
-//            //    for inner in v.value {
-//            //        s.serialize_element(&inner)?;
-//            //    }
-//            //    s.end()
-//            //},
-//            //Value::Object(ref m) => {
-//            //    let mut s = serializer.serialize_map(Some(m.value.len()))?;
-//            //    for (key, value) in &m.value {
-//            //        s.serialize_entry(&key, value)?;
-//            //    }
-//            //    s.end()
-//            //}
-//        }
-//    }
-//}
+//I would like to implemnt From here but I need a napi_env in scope so can't see a way.
+pub fn napi_value_to_value(env: napi_env, value: napi_value) -> Value {
+    match get_typeof(env, value) {
+        napi_valuetype_napi_null => Value::Null(value, env),
+        napi_valuetype_napi_boolean => Value::Bool(value, env),
+        napi_valuetype_napi_object => Value::Object(value, env),
+
+        _ => Value::Null(get_null_value(env), env)
+    }
+}
+
+impl Serialize for Value {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            Value::Null(_,_) => serializer.serialize_unit(),
+            Value::Bool(val, env) => {
+                let b = get_value_bool(env, val);
+                serializer.serialize_bool(b)
+            },
+            //Value::Float(f) => serializer.serialize_f64(f.value.into()),
+            //Value::String(ref s) => serializer.serialize_str(&s.value),
+            //Value::Array(ref v) => {
+            //    let mut s = serializer.serialize_seq(Some(v.value.len()))?;
+            //    for inner in v.value {
+            //        s.serialize_element(&inner)?;
+            //    }
+            //    s.end()
+            //},
+            //
+            Value::Object(val, env) => {
+                let mut m = serializer.serialize_map(None)?;
+                for (key, value) in get_object_map(env, val) {
+                    m.serialize_entry(&key, &napi_value_to_value(env, value))?;
+                }
+                m.end()
+            }
+        }
+    }
+}
 
 pub struct NapiEnv{
     env: napi_env
@@ -94,8 +109,8 @@ impl<'de> Visitor<'de> for ValueVisitor {
     }
 
     fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E> {
-        let val = ptr::null_mut();
-        Ok(Value::Bool(val, v))
+        let val = create_bool(self.env, v); 
+        Ok(Value::Bool(val, self.env))
     }
 //
 //    fn visit_f64<E: Error>(self, v: f64) -> Result<Self::Value, E> {
@@ -113,9 +128,10 @@ impl<'de> Visitor<'de> for ValueVisitor {
 //        Ok(Value::String(v))
 //    }
 //
-//    fn visit_unit<E>(self) -> Result<Self::Value, E> {
-//        Ok(Value::Null)
-//    }
+    fn visit_unit<E>(self) -> Result<Self::Value, E> {
+        let val = get_null_value(self.env); 
+        Ok(Value::Null(val, self.env))
+    }
 //
 //    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error> where A: SeqAccess<'de> {
 //        // use the size hint, but put a maximum to the allocation because we can't trust the input
@@ -128,19 +144,19 @@ impl<'de> Visitor<'de> for ValueVisitor {
 //        Ok(Value::Array(v))
 //    }
 //
-//    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error> where A: MapAccess<'de> {
-//        // use the size hint, but put a maximum to the allocation because we can't trust the input
-//        let mut m = RidiculousStringMap::with_capacity(std::cmp::min(map.size_hint().unwrap_or(0),
-//                                                         MAX_ALLOC));
-//
-//        while let Some((key, val)) = map.next_entry()? {
-//            if let Some(_) = m.insert(key, val) {
-//                return Err(A::Error::custom("map had duplicate key"));
-//            }
-//        }
-//
-//        Ok(Value::Object(m))
-//    }
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error> where A: MapAccess<'de> {
+        // use the size hint, but put a maximum to the allocation because we can't trust the input
+        let mut m = RidiculousStringMap::with_capacity(std::cmp::min(map.size_hint().unwrap_or(0),
+                                                         MAX_ALLOC));
+
+        while let Some((key, val)) = map.next_entry()? {
+            if let Some(_) = m.insert(key, val) {
+                return Err(A::Error::custom("map had duplicate key"));
+            }
+        }
+
+        Ok(Value::Object(m))
+    }
 }
 
 /// Check whether the given string is a valid `type` value of a content object.

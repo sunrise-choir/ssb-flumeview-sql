@@ -4,6 +4,7 @@ use std::debug_assert;
 use std::ffi::CString;
 use std::os::raw::{c_char, c_void};
 use std::ptr;
+use std::collections::BTreeMap;
 
 pub fn throw_error(env: napi_env, err: ErrorKind) {
     let status: napi_status;
@@ -35,6 +36,16 @@ pub fn get_undefined_value(env: napi_env) -> napi_value {
     debug_assert!(status == napi_status_napi_ok);
 
     undefined_value
+}
+
+pub fn get_null_value(env: napi_env) -> napi_value {
+    let mut null_value: napi_value = ptr::null_mut();
+    let status = unsafe {
+        napi_get_null(env, &mut null_value)
+    };
+    debug_assert!(status == napi_status_napi_ok);
+
+    null_value
 }
 
 pub fn get_arg(env: napi_env, info: napi_callback_info, arg_index: usize) -> napi_value {
@@ -169,6 +180,40 @@ pub fn create_int32(env: napi_env, num: i32) -> napi_value {
     debug_assert!(status == napi_status_napi_ok);
 
     result
+}
+
+pub fn create_bool(env: napi_env, b: bool) -> napi_value {
+    let mut result: napi_value = ptr::null_mut();
+    let status = unsafe {
+        napi_get_boolean(env, b, &mut result)
+    };
+    debug_assert!(status == napi_status_napi_ok);
+
+    result
+}
+
+pub fn get_value_bool(env: napi_env, value: napi_value) -> bool {
+    let mut result = false;
+    let status = unsafe {
+        napi_get_value_bool(env, value, &mut result)
+    };
+    debug_assert!(status == napi_status_napi_ok);
+
+    result
+}
+
+pub fn get_typeof(env: napi_env, value: napi_value) -> napi_valuetype {
+    let mut result = 0;
+    let status = unsafe {
+        napi_typeof(env, value, &mut result)
+    };
+    debug_assert!(status == napi_status_napi_ok);
+
+    result
+}
+
+pub fn get_object_map(env: napi_env, value: napi_value) -> BTreeMap<String, napi_value> {
+    unimplemented!()
 }
 
 pub fn slice_buffer(env: napi_env, buff: napi_value, beginning: usize, end: usize) -> napi_value {
