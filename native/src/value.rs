@@ -5,6 +5,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, btree_map};
 use std::fmt;
 use std::ptr;
+use std::marker::PhantomData;
 
 use indexmap::{IndexMap, map};
 use serde::{
@@ -19,7 +20,6 @@ use napi::*;
 // The maximum capacity of entries to preallocate for arrays and objects. Even if malicious input
 // claims to contain a much larger collection, only this much memory will be blindly allocated.
 static MAX_ALLOC: usize = 2048;
-
 
 /// Represents any valid ssb legacy message value, preserving the order of object entries.
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -144,19 +144,19 @@ impl<'de> Visitor<'de> for ValueVisitor {
 //        Ok(Value::Array(v))
 //    }
 //
-    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error> where A: MapAccess<'de> {
-        // use the size hint, but put a maximum to the allocation because we can't trust the input
-        let mut m = RidiculousStringMap::with_capacity(std::cmp::min(map.size_hint().unwrap_or(0),
-                                                         MAX_ALLOC));
-
-        while let Some((key, val)) = map.next_entry()? {
-            if let Some(_) = m.insert(key, val) {
-                return Err(A::Error::custom("map had duplicate key"));
-            }
-        }
-
-        Ok(Value::Object(m))
-    }
+//    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error> where A: MapAccess<'de> {
+//        // use the size hint, but put a maximum to the allocation because we can't trust the input
+//        let mut m = RidiculousStringMap::with_capacity(std::cmp::min(map.size_hint().unwrap_or(0),
+//                                                         MAX_ALLOC));
+//
+//        while let Some((key, val)) = map.next_entry()? {
+//            if let Some(_) = m.insert(key, val) {
+//                return Err(A::Error::custom("map had duplicate key"));
+//            }
+//        }
+//
+//        Ok(Value::Object(m))
+//    }
 }
 
 /// Check whether the given string is a valid `type` value of a content object.
