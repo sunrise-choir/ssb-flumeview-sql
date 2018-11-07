@@ -23,5 +23,10 @@ use napi_sys::*;
 
 #[no_mangle]
 pub extern "C" fn parse_legacy(env: napi_env, info: napi_callback_info) -> napi_value {
+    // get the buffer contents as a slice.
+    //
+    // call from_slice
+    //
+    // return what we got
     get_undefined_value(env)
 }
