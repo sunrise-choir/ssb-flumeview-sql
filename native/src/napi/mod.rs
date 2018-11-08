@@ -1,7 +1,7 @@
 use errors::*;
 use napi_sys::*;
 use std::debug_assert;
-use std::ffi::{CString, IntoStringError};
+use std::ffi::{CString};
 use std::os::raw::{c_char, c_void};
 use std::ptr;
 use std::collections::BTreeMap;
@@ -142,14 +142,17 @@ pub fn create_string_utf8(env: napi_env, string: &str) -> napi_value {
 
 pub fn get_string(env: napi_env, value: napi_value) -> Result<String> {
     let max_string_size = 100;
-    let status: napi_status;
 
-    let mut vec: Vec<u8> = Vec::with_capacity(max_string_size);
+    let vec: Vec<u8> = Vec::with_capacity(max_string_size);
     let mut cstr = unsafe { CString::from_vec_unchecked(vec) };
-    let mut p_str = cstr.into_raw();
+    let p_str = cstr.into_raw();
     let mut length = 0;
 
     let status = unsafe {napi_get_value_string_utf8(env, value, p_str, max_string_size, &mut length)};
+    if status == napi_status_napi_string_expected{
+        bail!(ErrorKind::StringError)
+    }
+
     debug_assert!(status == napi_status_napi_ok);
 
     cstr = unsafe{ CString::from_raw(p_str)};
@@ -158,6 +161,7 @@ pub fn get_string(env: napi_env, value: napi_value) -> Result<String> {
         .or(Err(ErrorKind::StringError.into()))
 
 }
+
 pub fn create_buffer(env: napi_env, len: usize) -> napi_value {
     let status: napi_status;
     let mut _p_buff: *mut c_void = ptr::null_mut();
@@ -242,7 +246,7 @@ pub fn get_object_map(env: napi_env, object: napi_value) -> BTreeMap<String, nap
 
     let mut key: napi_value = ptr::null_mut();
 
-    for i in (0..keys_length) {
+    for i in 0..keys_length {
         let mut value: napi_value = ptr::null_mut();
 
         let status = unsafe {napi_get_element(env, keys_value, i, &mut key)};
@@ -257,8 +261,6 @@ pub fn get_object_map(env: napi_env, object: napi_value) -> BTreeMap<String, nap
         }
     }
 
-    //use the key to get the value in the object. 
-    //shove it al into the map
     map
 }
 
