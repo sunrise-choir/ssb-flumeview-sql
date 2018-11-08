@@ -183,16 +183,6 @@ pub fn create_int32(env: napi_env, num: i32) -> napi_value {
     result
 }
 
-pub fn create_bool(env: napi_env, b: bool) -> napi_value {
-    let mut result: napi_value = ptr::null_mut();
-    let status = unsafe {
-        napi_get_boolean(env, b, &mut result)
-    };
-    debug_assert!(status == napi_status_napi_ok);
-
-    result
-}
-
 pub struct NapiEnv {
     pub env: napi_env
 }
@@ -218,6 +208,12 @@ impl CreateNapiValue for NapiEnv {
     type Item = bool;
     fn create_napi_value(&self, item: &Self::Item) -> napi_value{
         wrap_unsafe_create(self.env, *item, napi_get_boolean)
+    }
+}
+impl CreateNapiValue for NapiEnv {
+    type Item = int32;
+    fn create_napi_value(&self, item: &Self::Item) -> napi_value{
+        wrap_unsafe_create(self.env, *item, napi_create_int32)
     }
 }
 
