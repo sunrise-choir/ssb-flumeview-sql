@@ -5,6 +5,7 @@ use std::ffi::CString;
 use std::os::raw::{c_char, c_void};
 use std::ptr;
 use std::collections::BTreeMap;
+use std::any::TypeId;
 
 pub fn throw_error(env: napi_env, err: ErrorKind) {
     let status: napi_status;
@@ -192,6 +193,30 @@ pub fn create_bool(env: napi_env, b: bool) -> napi_value {
     result
 }
 
+pub struct NapiEnv {
+    env: napi_env
+}
+
+pub trait CreateNapiValue {
+    type Item;  
+    fn create_napi_value(&self, &Self::Item) -> napi_value;
+}
+
+//generic function
+//macro
+//helper trait
+//  - helper trait would be the one that's paramterised for Item
+
+impl CreateNapiValue for NapiEnv {
+    type Item = bool;
+    fn create_napi_value(&self, item: &Self::Item) -> napi_value{
+        let mut result: napi_value = ptr::null_mut();
+        let status = unsafe{napi_get_boolean(self.env, *item, &mut result)};
+        debug_assert!(status == napi_status_napi_ok);
+        result
+    }
+}
+
 pub fn get_value_bool(env: napi_env, value: napi_value) -> bool {
     let mut result = false;
     let status = unsafe {
@@ -213,6 +238,12 @@ pub fn get_typeof(env: napi_env, value: napi_value) -> napi_valuetype {
 }
 
 pub fn get_object_map(env: napi_env, value: napi_value) -> BTreeMap<String, napi_value> {
+    //get keys of object. Will be a napi_value with an array of strings.
+
+    // make a new BTreeMap
+    //iterate over the array (hmmm, how?)
+    //use the key to get the value in the object. 
+    //shove it al into the map
     unimplemented!()
 }
 
