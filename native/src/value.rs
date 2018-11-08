@@ -21,31 +21,15 @@ use napi::*;
 // claims to contain a much larger collection, only this much memory will be blindly allocated.
 static MAX_ALLOC: usize = 2048;
 
-/// Represents any valid ssb legacy message value, preserving the order of object entries.
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub enum Value {
-    // The [null](https://spec.scuttlebutt.nz/datamodel.html#null) value.
-    Null(napi_value, napi_env),
-    // A [boolean](https://spec.scuttlebutt.nz/datamodel.html#booleans).
-    Bool(napi_value, napi_env),
-    // A [float](https://spec.scuttlebutt.nz/datamodel.html#floats).
-    //Float(napi_value),
-    // A [string](https://spec.scuttlebutt.nz/datamodel.html#strings).
-    //String(napi_value),
-    // An [array](https://spec.scuttlebutt.nz/datamodel.html#arrays).
-    //Array(napi_value),
-    // An [object](https://spec.scuttlebutt.nz/datamodel.html#objects).
-    Object(napi_value, napi_env),
+pub struct Value{
+    env: napi_env,
+    value: napi_value
 }
 
-//I would like to implemnt From here but I need a napi_env in scope so can't see a way.
-pub fn napi_value_to_value(env: napi_env, value: napi_value) -> Value {
-    match get_typeof(env, value) {
-        napi_valuetype_napi_null => Value::Null(value, env),
-        napi_valuetype_napi_boolean => Value::Bool(value, env),
-        napi_valuetype_napi_object => Value::Object(value, env),
-
-        _ => Value::Null(get_null_value(env), env)
+impl Value {
+    fn get_typeof(&self)-> napi_valuetype {
+        get_typeof(self.env, self.value)
     }
 }
 
@@ -55,10 +39,10 @@ impl Serialize for Value {
     where
         S: Serializer,
     {
-        match *self {
-            Value::Null(_,_) => serializer.serialize_unit(),
-            Value::Bool(val, env) => {
-                let b = get_value_bool(env, val);
+        match self.get_typeof() {
+            napi_valuetype_napi_null => serializer.serialize_unit(),
+            napi_valuetype_napi_boolean =>{
+                let b = get_value_bool(self.env, self.value);
                 serializer.serialize_bool(b)
             },
             //Value::Float(f) => serializer.serialize_f64(f.value.into()),
@@ -71,23 +55,20 @@ impl Serialize for Value {
             //    s.end()
             //},
             //
-            Value::Object(val, env) => {
+            napi_valuetype_napi_object => {
                 let mut m = serializer.serialize_map(None)?;
-                for (key, value) in get_object_map(env, val) {
-                    m.serialize_entry(&key, &napi_value_to_value(env, value))?;
+                for (key, value) in get_object_map(self.env, self.value) {
+                    m.serialize_entry(&key, &Value{env: self.env, value: self.value})?;
                 }
                 m.end()
-            }
+            },
+            _ => serializer.serialize_unit()
         }
     }
 }
 
-pub struct NapiEnv{
-    env: napi_env
-}
-
 struct ValueVisitor{
-    env: napi_env
+    env: NapiEnv
 }
 
 impl<'de> DeserializeSeed<'de> for NapiEnv {
@@ -96,7 +77,7 @@ impl<'de> DeserializeSeed<'de> for NapiEnv {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(ValueVisitor{env: self.env})
+        deserializer.deserialize_any(ValueVisitor{env: NapiEnv{env:self.env}})
     }
 }
 
@@ -109,8 +90,8 @@ impl<'de> Visitor<'de> for ValueVisitor {
     }
 
     fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E> {
-        let val = create_bool(self.env, v); 
-        Ok(Value::Bool(val, self.env))
+        let val = self.env.create_napi_value(&v); 
+        Ok(Value{env: self.env.env, value: val})
     }
 //
 //    fn visit_f64<E: Error>(self, v: f64) -> Result<Self::Value, E> {
@@ -129,8 +110,8 @@ impl<'de> Visitor<'de> for ValueVisitor {
 //    }
 //
     fn visit_unit<E>(self) -> Result<Self::Value, E> {
-        let val = get_null_value(self.env); 
-        Ok(Value::Null(val, self.env))
+        let val = get_null_value(self.env.env); 
+        Ok(Value{env: self.env.env, value: val})
     }
 //
 //    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error> where A: SeqAccess<'de> {

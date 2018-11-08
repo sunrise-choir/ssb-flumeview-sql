@@ -194,7 +194,7 @@ pub fn create_bool(env: napi_env, b: bool) -> napi_value {
 }
 
 pub struct NapiEnv {
-    env: napi_env
+    pub env: napi_env
 }
 
 pub trait CreateNapiValue {
@@ -207,13 +207,17 @@ pub trait CreateNapiValue {
 //helper trait
 //  - helper trait would be the one that's paramterised for Item
 
+fn wrap_unsafe_create<T>(env: napi_env, item: T, f: unsafe extern "C" fn(napi_env, T, *mut napi_value)->napi_status) -> napi_value{
+    let mut result: napi_value = ptr::null_mut();
+    let status = unsafe{f(env, item, &mut result)};
+    debug_assert!(status == napi_status_napi_ok);
+    result
+}
+
 impl CreateNapiValue for NapiEnv {
     type Item = bool;
     fn create_napi_value(&self, item: &Self::Item) -> napi_value{
-        let mut result: napi_value = ptr::null_mut();
-        let status = unsafe{napi_get_boolean(self.env, *item, &mut result)};
-        debug_assert!(status == napi_status_napi_ok);
-        result
+        wrap_unsafe_create(self.env, *item, napi_get_boolean)
     }
 }
 
