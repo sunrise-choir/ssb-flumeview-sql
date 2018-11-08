@@ -129,6 +129,15 @@ pub fn create_buffer_copy(env: napi_env, slice: &[u8]) -> napi_value {
     buffer
 }
 
+pub fn create_array_with_length(env: napi_env, length: usize)-> napi_value{
+    let mut array: napi_value = ptr::null_mut();
+
+    let status = unsafe{napi_create_array_with_length(env, length, &mut array)};
+    debug_assert!(status == napi_status_napi_ok);
+
+    array
+}
+
 pub fn create_string_utf8(env: napi_env, string: &str) -> napi_value {
     let status: napi_status;
     let mut result: napi_value = ptr::null_mut();
@@ -244,14 +253,14 @@ pub fn get_typeof(env: napi_env, value: napi_value) -> napi_valuetype {
 }
 
 pub struct NapiArray{
-    env: napi_env,
-    array: napi_value,
-    current_index: u32,
-    length: u32,
+    pub env: napi_env,
+    pub array: napi_value,
+    pub current_index: u32,
+    pub length: u32,
 }
 
 impl NapiArray {
-    pub fn new(env: napi_env, array: napi_value)->NapiArray{
+    pub fn from_existing(env: napi_env, array: napi_value)->NapiArray{
         let mut length = 0;
         let status = unsafe {napi_get_array_length(env, array, &mut length)};
         debug_assert!(status == napi_status_napi_ok);
@@ -263,13 +272,26 @@ impl NapiArray {
             current_index: 0
         }
     }
+    pub fn with_capacity(env: napi_env, capacity: usize) -> NapiArray {
+        let array =  create_array_with_length(env, capacity);
+        NapiArray{
+            env,
+            array,
+            length: 0,
+            current_index: 0
+        }
+    }
+
+    pub fn push(&mut self, value: napi_value){
+        unimplemented!();
+    }
 }
 
 impl Iterator for NapiArray {
     type Item=napi_value;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_index == self.length {
+        if self.current_index >= self.length {
             return None;
         }
 
@@ -300,7 +322,7 @@ pub fn get_object_map(env: napi_env, object: napi_value) -> BTreeMap<String, nap
     let status = unsafe {napi_get_property_names(env, object, &mut keys_value)};
     debug_assert!(status == napi_status_napi_ok);
 
-    for key in NapiArray::new(env, keys_value) {
+    for key in NapiArray::from_existing(env, keys_value) {
         let mut value: napi_value = ptr::null_mut();
         let status = unsafe {napi_get_property(env, object, key, &mut value)};
         debug_assert!(status == napi_status_napi_ok);

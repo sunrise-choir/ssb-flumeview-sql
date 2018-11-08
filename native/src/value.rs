@@ -23,18 +23,18 @@ use napi::*;
 static MAX_ALLOC: usize = 2048;
 
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub struct Value{
+pub struct NapiValue{
     env: napi_env,
     value: napi_value
 }
 
-impl Value {
+impl NapiValue {
     fn get_typeof(&self)-> napi_valuetype {
         get_typeof(self.env, self.value)
     }
 }
 
-impl Serialize for Value {
+impl Serialize for NapiValue {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -59,16 +59,16 @@ impl Serialize for Value {
                 unsafe {napi_is_array(self.env, self.value, &mut is_array)};
 
                 if is_array {
-                    let array = NapiArray::new(self.env, self.value);
+                    let array = NapiArray::from_existing(self.env, self.value);
                     let mut s = serializer.serialize_seq(Some(array.len()))?;
                     for value in array {
-                        s.serialize_element(&Value{env: self.env, value})?;
+                        s.serialize_element(&NapiValue{env: self.env, value})?;
                     }
                     s.end()
                 } else {
                     let mut m = serializer.serialize_map(None)?;
                     for (key, value) in get_object_map(self.env, self.value) {
-                        m.serialize_entry(&key, &Value{env: self.env, value: self.value})?;
+                        m.serialize_entry(&key, &NapiValue{env: self.env, value: self.value})?;
                     }
                     m.end()
                 }
@@ -83,8 +83,8 @@ struct ValueVisitor{
 }
 
 impl<'de> DeserializeSeed<'de> for NapiEnv {
-    type Value = Value;
-    fn deserialize<D>(self, deserializer: D) -> Result<Value, D::Error>
+    type Value = NapiValue;
+    fn deserialize<D>(self, deserializer: D) -> Result<NapiValue, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -92,9 +92,8 @@ impl<'de> DeserializeSeed<'de> for NapiEnv {
     }
 }
 
-
 impl<'de> Visitor<'de> for ValueVisitor {
-    type Value = Value;
+    type Value = NapiValue;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("any valid legacy ssb value")
@@ -102,43 +101,44 @@ impl<'de> Visitor<'de> for ValueVisitor {
 
     fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E> {
         let value = wrap_unsafe_create(self.env, v, napi_get_boolean); 
-        Ok(Value{env: self.env, value})
+        Ok(NapiValue{env: self.env, value})
     }
 
     fn visit_f64<E: Error>(self, v: f64) -> Result<Self::Value, E> {
         match LegacyF64::from_f64(v) {
             Some(_) => {
                 let value = wrap_unsafe_create(self.env, v, napi_create_double);
-                Ok(Value{env: self.env, value})
+                Ok(NapiValue{env: self.env, value})
             },
             None => Err(E::custom("invalid float"))
         }
     }
-//
-//    fn visit_str<E: Error>(self, v: &str) -> Result<Self::Value, E> {
-//        self.visit_string(v.to_string())
-//    }
-//
-//    fn visit_string<E>(self, v: String) -> Result<Self::Value, E> {
-//        Ok(Value::String(v))
-//    }
-//
-    fn visit_unit<E>(self) -> Result<Self::Value, E> {
-        let val = get_null_value(self.env); 
-        Ok(Value{env: self.env, value: val})
+
+    fn visit_str<E: Error>(self, v: &str) -> Result<Self::Value, E> {
+        self.visit_string(v.to_string())
     }
-//
-//    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error> where A: SeqAccess<'de> {
-//        // use the size hint, but put a maximum to the allocation because we can't trust the input
-//        let mut v = Vec::with_capacity(std::cmp::min(seq.size_hint().unwrap_or(0), MAX_ALLOC));
-//
-//        while let Some(inner) = seq.next_element()? {
-//            v.push(inner);
-//        }
-//
-//        Ok(Value::Array(v))
-//    }
-//
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E> {
+        let value = create_string_utf8(self.env, &v);
+        Ok(NapiValue{env: self.env, value})
+    }
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E> {
+        let value = get_null_value(self.env); 
+        Ok(NapiValue{env: self.env, value})
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error> where A: SeqAccess<'de> {
+        // use the size hint, but put a maximum to the allocation because we can't trust the input
+        let mut array = NapiArray::with_capacity(self.env, std::cmp::min(seq.size_hint().unwrap_or(0), MAX_ALLOC));
+
+        while let Some(elem) = seq.next_element_seed(NapiEnv{env:self.env})? {
+            array.push(elem.value);
+        }
+
+        Ok(NapiValue{env: self.env, value: array.array})
+    }
+
 //    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error> where A: MapAccess<'de> {
 //        // use the size hint, but put a maximum to the allocation because we can't trust the input
 //        let mut m = RidiculousStringMap::with_capacity(std::cmp::min(map.size_hint().unwrap_or(0),
