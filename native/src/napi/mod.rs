@@ -1,3 +1,5 @@
+#![allow(non_upper_case_globals)]
+
 use errors::*;
 use napi_sys::*;
 use std::debug_assert;
@@ -141,14 +143,22 @@ pub fn create_string_utf8(env: napi_env, string: &str) -> napi_value {
 }
 
 pub fn get_string(env: napi_env, value: napi_value) -> Result<String> {
-    let max_string_size = 100;
 
-    let vec: Vec<u8> = Vec::with_capacity(max_string_size);
+    let mut string_length_value = ptr::null_mut();
+    let status = unsafe {napi_get_named_property(env, value, "length".as_ptr() as *const c_char, &mut string_length_value)};
+
+    if status != napi_status_napi_ok{
+        bail!(ErrorKind::StringError)
+    }
+
+    let string_length = wrap_unsafe_get(env, string_length_value, napi_get_value_uint32) as usize;
+
+    let vec: Vec<u8> = Vec::with_capacity(string_length);
     let mut cstr = unsafe { CString::from_vec_unchecked(vec) };
     let p_str = cstr.into_raw();
     let mut length = 0;
 
-    let status = unsafe {napi_get_value_string_utf8(env, value, p_str, max_string_size, &mut length)};
+    let status = unsafe {napi_get_value_string_utf8(env, value, p_str, string_length, &mut length)};
     if status == napi_status_napi_string_expected{
         bail!(ErrorKind::StringError)
     }
@@ -233,6 +243,56 @@ pub fn get_typeof(env: napi_env, value: napi_value) -> napi_valuetype {
     result
 }
 
+pub struct NapiArray{
+    env: napi_env,
+    array: napi_value,
+    current_index: u32,
+    length: u32,
+}
+
+impl NapiArray {
+    pub fn new(env: napi_env, array: napi_value)->NapiArray{
+        let mut length = 0;
+        let status = unsafe {napi_get_array_length(env, array, &mut length)};
+        debug_assert!(status == napi_status_napi_ok);
+
+        NapiArray{
+            env,
+            array,
+            length,
+            current_index: 0
+        }
+    }
+}
+
+impl Iterator for NapiArray {
+    type Item=napi_value;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_index == self.length {
+            return None;
+        }
+
+        let mut value: napi_value = ptr::null_mut();
+        let status = unsafe {napi_get_element(self.env, self.array, self.current_index, &mut value)};
+        debug_assert!(status == napi_status_napi_ok);
+
+        self.current_index += 1;
+
+        Some(value)
+    }
+}
+
+impl ExactSizeIterator for NapiArray {
+    fn len(&self) -> usize {
+        self.length as usize
+    }
+}
+
+pub fn get_array_iter(env: napi_env, value: napi_value)-> NapiArray{
+    unimplemented!()
+}
+
 pub fn get_object_map(env: napi_env, object: napi_value) -> BTreeMap<String, napi_value> {
     //get keys of object. 
     let mut map = BTreeMap::<String, napi_value>::new();
@@ -240,22 +300,11 @@ pub fn get_object_map(env: napi_env, object: napi_value) -> BTreeMap<String, nap
     let status = unsafe {napi_get_property_names(env, object, &mut keys_value)};
     debug_assert!(status == napi_status_napi_ok);
 
-    let mut keys_length = 0;
-    let status = unsafe {napi_get_array_length(env, keys_value, &mut keys_length)};
-    debug_assert!(status == napi_status_napi_ok);
-
-    let mut key: napi_value = ptr::null_mut();
-
-    for i in 0..keys_length {
+    for key in NapiArray::new(env, keys_value) {
         let mut value: napi_value = ptr::null_mut();
-
-        let status = unsafe {napi_get_element(env, keys_value, i, &mut key)};
-        debug_assert!(status == napi_status_napi_ok);
-    
         let status = unsafe {napi_get_property(env, object, key, &mut value)};
         debug_assert!(status == napi_status_napi_ok);
 
-        //TODO: what if the string length is not set right?
         if let Ok(key_string) = get_string(env, key){
             map.insert(key_string, value);
         }

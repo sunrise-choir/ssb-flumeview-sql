@@ -1,4 +1,5 @@
 //! Data structures for storing and manipulating arbitrary legacy data.
+#![allow(non_upper_case_globals)]
 
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -49,21 +50,28 @@ impl Serialize for Value {
                 let n = wrap_unsafe_get(self.env, self.value, napi_get_value_double);
                 serializer.serialize_f64(n)
             }
-            //Value::String(ref s) => serializer.serialize_str(&s.value),
-            //Value::Array(ref v) => {
-            //    let mut s = serializer.serialize_seq(Some(v.value.len()))?;
-            //    for inner in v.value {
-            //        s.serialize_element(&inner)?;
-            //    }
-            //    s.end()
-            //},
-            //
+            napi_valuetype_napi_string => {
+                let s = get_string(self.env, self.value).unwrap(); //Assume we're safe to unwrap here because we've already type checked the thing. 
+                serializer.serialize_str(&s)
+            }
             napi_valuetype_napi_object => {
-                let mut m = serializer.serialize_map(None)?;
-                for (key, value) in get_object_map(self.env, self.value) {
-                    m.serialize_entry(&key, &Value{env: self.env, value: self.value})?;
+                let mut is_array = false;
+                unsafe {napi_is_array(self.env, self.value, &mut is_array)};
+
+                if is_array {
+                    let array = NapiArray::new(self.env, self.value);
+                    let mut s = serializer.serialize_seq(Some(array.len()))?;
+                    for value in array {
+                        s.serialize_element(&Value{env: self.env, value})?;
+                    }
+                    s.end()
+                } else {
+                    let mut m = serializer.serialize_map(None)?;
+                    for (key, value) in get_object_map(self.env, self.value) {
+                        m.serialize_entry(&key, &Value{env: self.env, value: self.value})?;
+                    }
+                    m.end()
                 }
-                m.end()
             },
             _ => serializer.serialize_unit()
         }
