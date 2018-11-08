@@ -8,5 +8,6 @@ error_chain! {
         SecretKeyError{}
         NotARecipient{}
         NapiError{}
+        StringError{}
     }
 }

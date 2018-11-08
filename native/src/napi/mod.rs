@@ -1,11 +1,25 @@
 use errors::*;
 use napi_sys::*;
 use std::debug_assert;
-use std::ffi::CString;
+use std::ffi::{CString, IntoStringError};
 use std::os::raw::{c_char, c_void};
 use std::ptr;
 use std::collections::BTreeMap;
 use std::any::TypeId;
+
+pub fn wrap_unsafe_create<T>(env: napi_env, item: T, f: unsafe extern "C" fn(napi_env, T, *mut napi_value)->napi_status) -> napi_value{
+    let mut result: napi_value = ptr::null_mut();
+    let status = unsafe{f(env, item, &mut result)};
+    debug_assert!(status == napi_status_napi_ok);
+    result
+}
+
+pub fn wrap_unsafe_get<T: Default>(env: napi_env, value: napi_value, f: unsafe extern "C" fn(napi_env, napi_value, *mut T)->napi_status) -> T{
+    let mut result: T = T::default();
+    let status = unsafe{f(env, value, &mut result)};
+    debug_assert!(status == napi_status_napi_ok);
+    result
+}
 
 pub fn throw_error(env: napi_env, err: ErrorKind) {
     let status: napi_status;
@@ -126,6 +140,24 @@ pub fn create_string_utf8(env: napi_env, string: &str) -> napi_value {
     result
 }
 
+pub fn get_string(env: napi_env, value: napi_value) -> Result<String> {
+    let max_string_size = 100;
+    let status: napi_status;
+
+    let mut vec: Vec<u8> = Vec::with_capacity(max_string_size);
+    let mut cstr = unsafe { CString::from_vec_unchecked(vec) };
+    let mut p_str = cstr.into_raw();
+    let mut length = 0;
+
+    let status = unsafe {napi_get_value_string_utf8(env, value, p_str, max_string_size, &mut length)};
+    debug_assert!(status == napi_status_napi_ok);
+
+    cstr = unsafe{ CString::from_raw(p_str)};
+
+    cstr.into_string()
+        .or(Err(ErrorKind::StringError.into()))
+
+}
 pub fn create_buffer(env: napi_env, len: usize) -> napi_value {
     let status: napi_status;
     let mut _p_buff: *mut c_void = ptr::null_mut();
@@ -187,46 +219,6 @@ pub struct NapiEnv {
     pub env: napi_env
 }
 
-pub trait CreateNapiValue {
-    type Item;  
-    fn create_napi_value(&self, &Self::Item) -> napi_value;
-}
-
-//generic function
-//macro
-//helper trait
-//  - helper trait would be the one that's paramterised for Item
-
-fn wrap_unsafe_create<T>(env: napi_env, item: T, f: unsafe extern "C" fn(napi_env, T, *mut napi_value)->napi_status) -> napi_value{
-    let mut result: napi_value = ptr::null_mut();
-    let status = unsafe{f(env, item, &mut result)};
-    debug_assert!(status == napi_status_napi_ok);
-    result
-}
-
-impl CreateNapiValue for NapiEnv {
-    type Item = bool;
-    fn create_napi_value(&self, item: &Self::Item) -> napi_value{
-        wrap_unsafe_create(self.env, *item, napi_get_boolean)
-    }
-}
-impl CreateNapiValue for NapiEnv {
-    type Item = int32;
-    fn create_napi_value(&self, item: &Self::Item) -> napi_value{
-        wrap_unsafe_create(self.env, *item, napi_create_int32)
-    }
-}
-
-pub fn get_value_bool(env: napi_env, value: napi_value) -> bool {
-    let mut result = false;
-    let status = unsafe {
-        napi_get_value_bool(env, value, &mut result)
-    };
-    debug_assert!(status == napi_status_napi_ok);
-
-    result
-}
-
 pub fn get_typeof(env: napi_env, value: napi_value) -> napi_valuetype {
     let mut result = 0;
     let status = unsafe {
@@ -237,14 +229,37 @@ pub fn get_typeof(env: napi_env, value: napi_value) -> napi_valuetype {
     result
 }
 
-pub fn get_object_map(env: napi_env, value: napi_value) -> BTreeMap<String, napi_value> {
-    //get keys of object. Will be a napi_value with an array of strings.
+pub fn get_object_map(env: napi_env, object: napi_value) -> BTreeMap<String, napi_value> {
+    //get keys of object. 
+    let mut map = BTreeMap::<String, napi_value>::new();
+    let mut keys_value = ptr::null_mut();
+    let status = unsafe {napi_get_property_names(env, object, &mut keys_value)};
+    debug_assert!(status == napi_status_napi_ok);
 
-    // make a new BTreeMap
-    //iterate over the array (hmmm, how?)
+    let mut keys_length = 0;
+    let status = unsafe {napi_get_array_length(env, keys_value, &mut keys_length)};
+    debug_assert!(status == napi_status_napi_ok);
+
+    let mut key: napi_value = ptr::null_mut();
+
+    for i in (0..keys_length) {
+        let mut value: napi_value = ptr::null_mut();
+
+        let status = unsafe {napi_get_element(env, keys_value, i, &mut key)};
+        debug_assert!(status == napi_status_napi_ok);
+    
+        let status = unsafe {napi_get_property(env, object, key, &mut value)};
+        debug_assert!(status == napi_status_napi_ok);
+
+        //TODO: what if the string length is not set right?
+        if let Ok(key_string) = get_string(env, key){
+            map.insert(key_string, value);
+        }
+    }
+
     //use the key to get the value in the object. 
     //shove it al into the map
-    unimplemented!()
+    map
 }
 
 pub fn slice_buffer(env: napi_env, buff: napi_value, beginning: usize, end: usize) -> napi_value {
