@@ -282,8 +282,8 @@ impl NapiArray {
         }
     }
 
-    pub fn push(&mut self, value: napi_value){
-        unimplemented!();
+    pub fn push(&mut self, elem: napi_value){
+        push_array(self.env, self.array, elem)
     }
 }
 
@@ -311,9 +311,6 @@ impl ExactSizeIterator for NapiArray {
     }
 }
 
-pub fn get_array_iter(env: napi_env, value: napi_value)-> NapiArray{
-    unimplemented!()
-}
 
 pub fn get_object_map(env: napi_env, object: napi_value) -> BTreeMap<String, napi_value> {
     //get keys of object. 
@@ -333,6 +330,30 @@ pub fn get_object_map(env: napi_env, object: napi_value) -> BTreeMap<String, nap
     }
 
     map
+}
+
+pub fn push_array(env: napi_env, array: napi_value, elem: napi_value) {
+    let mut return_value: napi_value = ptr::null_mut();
+    let mut push_fn: napi_value = ptr::null_mut();
+    let mut args: [napi_value; 1] = [elem];
+
+    let status = unsafe {
+        napi_get_named_property(env, array, "slice".as_ptr() as *const c_char, &mut push_fn)
+    };
+    debug_assert!(status == napi_status_napi_ok);
+
+    let status = unsafe {
+        napi_call_function(
+            env,
+            array,
+            push_fn,
+            1,
+            &args[0] as *const napi_value,
+            &mut return_value,
+        )
+    };
+
+    debug_assert!(status == napi_status_napi_ok);
 }
 
 pub fn slice_buffer(env: napi_env, buff: napi_value, beginning: usize, end: usize) -> napi_value {
