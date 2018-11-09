@@ -1,20 +1,14 @@
 //! Data structures for storing and manipulating arbitrary legacy data.
 #![allow(non_upper_case_globals)]
 
-use std::borrow::Borrow;
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, btree_map};
 use std::fmt;
-use std::ptr;
-use std::marker::PhantomData;
 
-use indexmap::{IndexMap, map};
 use serde::{
     ser::{Serialize, Serializer, SerializeSeq, SerializeMap},
-    de::{Deserialize, DeserializeSeed, Deserializer, Visitor, SeqAccess, MapAccess, Error},
+    de::{DeserializeSeed, Deserializer, Visitor, SeqAccess, MapAccess, Error},
 };
 
-use ssb_legacy_msg_data::{LegacyF64, legacy_length};
+use ssb_legacy_msg_data::{LegacyF64};
 use napi_sys::*;
 use napi::*;
 
@@ -68,7 +62,7 @@ impl Serialize for NapiValue {
                 } else {
                     let mut m = serializer.serialize_map(None)?;
                     for (key, value) in get_object_map(self.env, self.value) {
-                        m.serialize_entry(&key, &NapiValue{env: self.env, value: self.value})?;
+                        m.serialize_entry(&key, &NapiValue{env: self.env, value})?;
                     }
                     m.end()
                 }
@@ -141,7 +135,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
 
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error> where A: MapAccess<'de> {
         // use the size hint, but put a maximum to the allocation because we can't trust the input
-        let mut object = create_object(self.env);
+        let object = create_object(self.env);
 
         while let Some((key, val)) = map.next_entry_seed(NapiEnv{env: self.env}, NapiEnv{env: self.env})? {
             unsafe{napi_set_property(self.env, object, key.value, val.value)};

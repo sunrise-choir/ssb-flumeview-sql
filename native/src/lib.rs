@@ -8,7 +8,6 @@ extern crate ryu_ecmascript;
 extern crate strtod;
 extern crate encode_unicode;
 extern crate serde;
-#[macro_use]
 extern crate serde_derive;
 extern crate base64;
 

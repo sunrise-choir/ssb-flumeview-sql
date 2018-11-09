@@ -1,4 +1,5 @@
 #![allow(non_upper_case_globals)]
+#![allow(unused)]
 
 use errors::*;
 use napi_sys::*;
@@ -346,7 +347,7 @@ pub fn get_object_map(env: napi_env, object: napi_value) -> BTreeMap<String, nap
 pub fn push_array(env: napi_env, array: napi_value, elem: napi_value) {
     let mut return_value: napi_value = ptr::null_mut();
     let mut push_fn: napi_value = ptr::null_mut();
-    let mut args: [napi_value; 1] = [elem];
+    let args: [napi_value; 1] = [elem];
 
     let status = unsafe {
         napi_get_named_property(env, array, "slice".as_ptr() as *const c_char, &mut push_fn)
