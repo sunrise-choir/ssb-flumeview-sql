@@ -26,17 +26,15 @@ use serde::de::DeserializeSeed;
 
 #[no_mangle]
 pub extern "C" fn parse_legacy(env: napi_env, info: napi_callback_info) -> napi_value {
+    let arg = get_arg(env, info, 0);
 
-    let input = r#"
-      {
-        "a_boolean": true
-      }
-    "#;
-
-
-    // A JSON deserializer. You can use any Serde Deserializer here.
-    let mut deserializer = serde_json::Deserializer::from_str(input);
-
-    NapiEnv{env}.deserialize(&mut deserializer).unwrap().value
+    get_string(env, arg)
+        .and_then(|string|{
+            let mut deserializer = serde_json::Deserializer::from_str(&string);
+            NapiEnv{env}.deserialize(&mut deserializer)
+                .or(Err(errors::ErrorKind::ArgumentTypeError.into()))
+        })
+        .map(|result|{result.value})
+        .unwrap_or(get_undefined_value(env))
 
 }

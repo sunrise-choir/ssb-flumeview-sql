@@ -93,7 +93,9 @@ pub fn get_arg(env: napi_env, info: napi_callback_info, arg_index: usize) -> nap
 
     debug_assert!(status == napi_status_napi_ok);
 
-    args[arg_index]
+    *args
+        .get(arg_index)
+        .unwrap_or(&get_undefined_value(env))
 }
 
 pub fn check_is_buffer(env: napi_env, value: napi_value) -> bool {
