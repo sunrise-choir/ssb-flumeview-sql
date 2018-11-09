@@ -66,3 +66,9 @@ dependencies = [
 		"build_native",
 		"mv_napi_binding"
 ]
+[tasks.no-cross]
+script = [
+"cargo build",
+"make",
+"mv libbinding.so binding.node",
+]

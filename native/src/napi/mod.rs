@@ -165,11 +165,18 @@ pub fn create_string_utf8(env: napi_env, string: &str) -> napi_value {
 pub fn get_string(env: napi_env, value: napi_value) -> Result<String> {
 
     let mut string_length_value = ptr::null_mut();
-    let status = unsafe {napi_get_named_property(env, value, "length".as_ptr() as *const c_char, &mut string_length_value)};
+
+    let length_value = create_string_utf8(env, &"length");
+
+    let status = unsafe {napi_get_property(env, value, length_value, &mut string_length_value)};
 
     if status != napi_status_napi_ok{
         bail!(ErrorKind::StringError)
     }
+
+    let mut num: u32 = 0;
+    let status = unsafe {napi_get_value_uint32(env, string_length_value, &mut num)};
+    debug_assert!(status == napi_status_napi_ok);
 
     let string_length = wrap_unsafe_get(env, string_length_value, napi_get_value_uint32) as usize;
 

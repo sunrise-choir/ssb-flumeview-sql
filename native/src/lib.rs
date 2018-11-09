@@ -29,13 +29,14 @@ use ssb_legacy_msg_data::json::JsonDeserializer;
 pub extern "C" fn parse_legacy(env: napi_env, info: napi_callback_info) -> napi_value {
     let arg = get_arg(env, info, 0);
 
+    println!("about to do the thing");
     get_string(env, arg)
         .and_then(|string|{
+            println!("got the string");
             let mut deserializer = JsonDeserializer::from_slice(&string.as_bytes());
             NapiEnv{env}.deserialize(&mut deserializer)
                 .or(Err(errors::ErrorKind::ArgumentTypeError.into()))
         })
-        .map(|result|{result.value})
-        .unwrap_or(get_undefined_value(env))
-
+        .map(|result|result.value)
+        .unwrap_or_else(|_| get_undefined_value(env))
 }
