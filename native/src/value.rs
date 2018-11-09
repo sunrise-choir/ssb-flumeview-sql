@@ -139,18 +139,15 @@ impl<'de> Visitor<'de> for ValueVisitor {
         Ok(NapiValue{env: self.env, value: array.array})
     }
 
-//    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error> where A: MapAccess<'de> {
-//        // use the size hint, but put a maximum to the allocation because we can't trust the input
-//        let mut m = RidiculousStringMap::with_capacity(std::cmp::min(map.size_hint().unwrap_or(0),
-//                                                         MAX_ALLOC));
-//
-//        while let Some((key, val)) = map.next_entry()? {
-//            if let Some(_) = m.insert(key, val) {
-//                return Err(A::Error::custom("map had duplicate key"));
-//            }
-//        }
-//
-//        Ok(Value::Object(m))
-//    }
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error> where A: MapAccess<'de> {
+        // use the size hint, but put a maximum to the allocation because we can't trust the input
+        let mut object = create_object(self.env);
+
+        while let Some((key, val)) = map.next_entry_seed(NapiEnv{env: self.env}, NapiEnv{env: self.env})? {
+            unsafe{napi_set_property(self.env, object, key.value, val.value)};
+        }
+
+        Ok(NapiValue{env: self.env, value: object})
+    }
 }
 

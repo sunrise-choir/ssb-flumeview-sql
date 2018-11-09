@@ -44,6 +44,15 @@ pub fn create_error(env: napi_env, err: ErrorKind) -> napi_value {
 
     result
 }
+
+pub fn create_object(env: napi_env)-> napi_value{
+    let mut object: napi_value = ptr::null_mut();
+
+    let status = unsafe { napi_create_object(env, &mut object)};
+    debug_assert!(status == napi_status_napi_ok);
+
+    object
+}
 pub fn get_undefined_value(env: napi_env) -> napi_value {
     let mut undefined_value: napi_value = ptr::null_mut();
     let status: napi_status;
@@ -283,6 +292,8 @@ impl NapiArray {
     }
 
     pub fn push(&mut self, elem: napi_value){
+        //TODO: the push function (in push_array) could be stored in this object instead of having to get it for
+        //every call to push_array.
         push_array(self.env, self.array, elem)
     }
 }
