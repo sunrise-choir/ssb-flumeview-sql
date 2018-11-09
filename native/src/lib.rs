@@ -23,6 +23,7 @@ mod value;
 use napi::*;
 use napi_sys::*;
 use serde::de::DeserializeSeed; 
+use ssb_legacy_msg_data::json::JsonDeserializer;
 
 #[no_mangle]
 pub extern "C" fn parse_legacy(env: napi_env, info: napi_callback_info) -> napi_value {
@@ -30,7 +31,7 @@ pub extern "C" fn parse_legacy(env: napi_env, info: napi_callback_info) -> napi_
 
     get_string(env, arg)
         .and_then(|string|{
-            let mut deserializer = serde_json::Deserializer::from_str(&string);
+            let mut deserializer = JsonDeserializer::from_slice(&string.as_bytes());
             NapiEnv{env}.deserialize(&mut deserializer)
                 .or(Err(errors::ErrorKind::ArgumentTypeError.into()))
         })
