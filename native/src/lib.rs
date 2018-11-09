@@ -29,15 +29,14 @@ pub extern "C" fn parse_legacy(env: napi_env, info: napi_callback_info) -> napi_
 
     let input = r#"
       {
-        "a_boolean": true,
-        "an_array": [3, 2, 1]
+        "a_boolean": true
       }
     "#;
 
 
     // A JSON deserializer. You can use any Serde Deserializer here.
-    let deserializer = serde_json::Deserializer::from_str(input);
+    let mut deserializer = serde_json::Deserializer::from_str(input);
 
-    NapiEnv{env}.deserialize(deserializer).unwrap().value
+    NapiEnv{env}.deserialize(&mut deserializer).unwrap().value
 
 }
