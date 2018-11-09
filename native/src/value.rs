@@ -18,8 +18,8 @@ static MAX_ALLOC: usize = 2048;
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct NapiValue{
-    env: napi_env,
-    value: napi_value
+    pub env: napi_env,
+    pub value: napi_value
 }
 
 impl NapiValue {

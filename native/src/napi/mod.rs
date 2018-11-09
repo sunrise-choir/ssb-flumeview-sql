@@ -1,5 +1,5 @@
 #![allow(non_upper_case_globals)]
-#![allow(unused)]
+#![allow(dead_code)]
 
 use errors::*;
 use napi_sys::*;
@@ -8,7 +8,6 @@ use std::ffi::{CString};
 use std::os::raw::{c_char, c_void};
 use std::ptr;
 use std::collections::BTreeMap;
-use std::any::TypeId;
 
 pub fn wrap_unsafe_create<T>(env: napi_env, item: T, f: unsafe extern "C" fn(napi_env, T, *mut napi_value)->napi_status) -> napi_value{
     let mut result: napi_value = ptr::null_mut();
