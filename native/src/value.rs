@@ -160,7 +160,6 @@ impl<'de> Visitor<'de> for ValueVisitor {
     where
         A: MapAccess<'de>,
     {
-        // use the size hint, but put a maximum to the allocation because we can't trust the input
         let object = create_object(self.env);
 
         while let Some((key, val)) =
