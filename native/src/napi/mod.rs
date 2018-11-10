@@ -3,22 +3,30 @@
 
 use errors::*;
 use napi_sys::*;
+use std::collections::BTreeMap;
 use std::debug_assert;
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_void};
 use std::ptr;
-use std::collections::BTreeMap;
 
-pub fn wrap_unsafe_create<T>(env: napi_env, item: T, f: unsafe extern "C" fn(napi_env, T, *mut napi_value)->napi_status) -> napi_value{
+pub fn wrap_unsafe_create<T>(
+    env: napi_env,
+    item: T,
+    f: unsafe extern "C" fn(napi_env, T, *mut napi_value) -> napi_status,
+) -> napi_value {
     let mut result: napi_value = ptr::null_mut();
-    let status = unsafe{f(env, item, &mut result)};
+    let status = unsafe { f(env, item, &mut result) };
     debug_assert!(status == napi_status_napi_ok);
     result
 }
 
-pub fn wrap_unsafe_get<T: Default>(env: napi_env, value: napi_value, f: unsafe extern "C" fn(napi_env, napi_value, *mut T)->napi_status) -> T{
+pub fn wrap_unsafe_get<T: Default>(
+    env: napi_env,
+    value: napi_value,
+    f: unsafe extern "C" fn(napi_env, napi_value, *mut T) -> napi_status,
+) -> T {
     let mut result: T = T::default();
-    let status = unsafe{f(env, value, &mut result)};
+    let status = unsafe { f(env, value, &mut result) };
     debug_assert!(status == napi_status_napi_ok);
     result
 }
@@ -45,10 +53,10 @@ pub fn create_error(env: napi_env, err: ErrorKind) -> napi_value {
     result
 }
 
-pub fn create_object(env: napi_env)-> napi_value{
+pub fn create_object(env: napi_env) -> napi_value {
     let mut object: napi_value = ptr::null_mut();
 
-    let status = unsafe { napi_create_object(env, &mut object)};
+    let status = unsafe { napi_create_object(env, &mut object) };
     debug_assert!(status == napi_status_napi_ok);
 
     object
@@ -66,9 +74,7 @@ pub fn get_undefined_value(env: napi_env) -> napi_value {
 
 pub fn get_null_value(env: napi_env) -> napi_value {
     let mut null_value: napi_value = ptr::null_mut();
-    let status = unsafe {
-        napi_get_null(env, &mut null_value)
-    };
+    let status = unsafe { napi_get_null(env, &mut null_value) };
     debug_assert!(status == napi_status_napi_ok);
 
     null_value
@@ -93,9 +99,7 @@ pub fn get_arg(env: napi_env, info: napi_callback_info, arg_index: usize) -> nap
 
     debug_assert!(status == napi_status_napi_ok);
 
-    *args
-        .get(arg_index)
-        .unwrap_or(&get_undefined_value(env))
+    *args.get(arg_index).unwrap_or(&get_undefined_value(env))
 }
 
 pub fn check_is_buffer(env: napi_env, value: napi_value) -> bool {
@@ -140,10 +144,10 @@ pub fn create_buffer_copy(env: napi_env, slice: &[u8]) -> napi_value {
     buffer
 }
 
-pub fn create_array_with_length(env: napi_env, length: usize)-> napi_value{
+pub fn create_array_with_length(env: napi_env, length: usize) -> napi_value {
     let mut array: napi_value = ptr::null_mut();
 
-    let status = unsafe{napi_create_array_with_length(env, length, &mut array)};
+    let status = unsafe { napi_create_array_with_length(env, length, &mut array) };
     debug_assert!(status == napi_status_napi_ok);
 
     array
@@ -152,7 +156,7 @@ pub fn create_array_with_length(env: napi_env, length: usize)-> napi_value{
 pub fn create_string_utf8(env: napi_env, string: &str) -> napi_value {
     let status: napi_status;
     let mut result: napi_value = ptr::null_mut();
-    let p_str: *const std::os::raw::c_char = string.as_ptr() as *const c_char;
+    let p_str: *const c_char = string.as_ptr() as *const c_char;
 
     unsafe {
         status = napi_create_string_utf8(env, p_str, string.len(), &mut result);
@@ -163,37 +167,43 @@ pub fn create_string_utf8(env: napi_env, string: &str) -> napi_value {
 }
 
 pub fn get_string(env: napi_env, value: napi_value) -> Result<String> {
-
     let mut string_length_value = ptr::null_mut();
 
     let length_value = create_string_utf8(env, &"length");
 
-    let status = unsafe {napi_get_property(env, value, length_value, &mut string_length_value)};
+    let status = unsafe { napi_get_property(env, value, length_value, &mut string_length_value) };
 
-    if status != napi_status_napi_ok{
+    if status != napi_status_napi_ok {
         bail!(ErrorKind::StringError)
     }
 
     let mut num: u32 = 0;
-    let status = unsafe {napi_get_value_uint32(env, string_length_value, &mut num)};
+    let status = unsafe { napi_get_value_uint32(env, string_length_value, &mut num) };
     debug_assert!(status == napi_status_napi_ok);
 
     num += 1; //allow for null terminating c string
 
     let mut vec: Vec<u8> = Vec::with_capacity(num as usize);
-    let cstr = unsafe {CStr::from_ptr(vec.as_ptr() as *const c_char)};
+    let cstr = unsafe { CStr::from_ptr(vec.as_ptr() as *const c_char) };
     let mut length = 0;
 
-    let status = unsafe {napi_get_value_string_utf8(env, value, cstr.as_ptr() as *mut c_char, num as usize, &mut length)};
-    if status == napi_status_napi_string_expected{
+    let status = unsafe {
+        napi_get_value_string_utf8(
+            env,
+            value,
+            cstr.as_ptr() as *mut c_char,
+            num as usize,
+            &mut length,
+        )
+    };
+    if status == napi_status_napi_string_expected {
         bail!(ErrorKind::StringError)
     }
     debug_assert!(status == napi_status_napi_ok);
 
-    unsafe {vec.set_len(length)}
+    unsafe { vec.set_len(length) }
 
-    String::from_utf8(vec)
-        .or(Err(ErrorKind::StringError.into()))
+    String::from_utf8(vec).or(Err(ErrorKind::StringError.into()))
 }
 
 pub fn create_buffer(env: napi_env, len: usize) -> napi_value {
@@ -254,20 +264,18 @@ pub fn create_int32(env: napi_env, num: i32) -> napi_value {
 }
 
 pub struct NapiEnv {
-    pub env: napi_env
+    pub env: napi_env,
 }
 
 pub fn get_typeof(env: napi_env, value: napi_value) -> napi_valuetype {
     let mut result = 0;
-    let status = unsafe {
-        napi_typeof(env, value, &mut result)
-    };
+    let status = unsafe { napi_typeof(env, value, &mut result) };
     debug_assert!(status == napi_status_napi_ok);
 
     result
 }
 
-pub struct NapiArray{
+pub struct NapiArray {
     pub env: napi_env,
     pub array: napi_value,
     pub current_index: u32,
@@ -275,29 +283,29 @@ pub struct NapiArray{
 }
 
 impl NapiArray {
-    pub fn from_existing(env: napi_env, array: napi_value)->NapiArray{
+    pub fn from_existing(env: napi_env, array: napi_value) -> NapiArray {
         let mut length = 0;
-        let status = unsafe {napi_get_array_length(env, array, &mut length)};
+        let status = unsafe { napi_get_array_length(env, array, &mut length) };
         debug_assert!(status == napi_status_napi_ok);
 
-        NapiArray{
+        NapiArray {
             env,
             array,
             length,
-            current_index: 0
+            current_index: 0,
         }
     }
     pub fn with_capacity(env: napi_env, capacity: usize) -> NapiArray {
-        let array =  create_array_with_length(env, capacity);
-        NapiArray{
+        let array = create_array_with_length(env, capacity);
+        NapiArray {
             env,
             array,
             length: 0,
-            current_index: 0
+            current_index: 0,
         }
     }
 
-    pub fn push(&mut self, elem: napi_value){
+    pub fn push(&mut self, elem: napi_value) {
         //TODO: the push function (in push_array) could be stored in this object instead of having to get it for
         //every call to push_array.
         push_array(self.env, self.array, elem)
@@ -305,7 +313,7 @@ impl NapiArray {
 }
 
 impl Iterator for NapiArray {
-    type Item=napi_value;
+    type Item = napi_value;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_index >= self.length {
@@ -313,7 +321,8 @@ impl Iterator for NapiArray {
         }
 
         let mut value: napi_value = ptr::null_mut();
-        let status = unsafe {napi_get_element(self.env, self.array, self.current_index, &mut value)};
+        let status =
+            unsafe { napi_get_element(self.env, self.array, self.current_index, &mut value) };
         debug_assert!(status == napi_status_napi_ok);
 
         self.current_index += 1;
@@ -328,20 +337,19 @@ impl ExactSizeIterator for NapiArray {
     }
 }
 
-
 pub fn get_object_map(env: napi_env, object: napi_value) -> BTreeMap<String, napi_value> {
-    //get keys of object. 
+    //get keys of object.
     let mut map = BTreeMap::<String, napi_value>::new();
     let mut keys_value = ptr::null_mut();
-    let status = unsafe {napi_get_property_names(env, object, &mut keys_value)};
+    let status = unsafe { napi_get_property_names(env, object, &mut keys_value) };
     debug_assert!(status == napi_status_napi_ok);
 
     for key in NapiArray::from_existing(env, keys_value) {
         let mut value: napi_value = ptr::null_mut();
-        let status = unsafe {napi_get_property(env, object, key, &mut value)};
+        let status = unsafe { napi_get_property(env, object, key, &mut value) };
         debug_assert!(status == napi_status_napi_ok);
 
-        if let Ok(key_string) = get_string(env, key){
+        if let Ok(key_string) = get_string(env, key) {
             map.insert(key_string, value);
         }
     }

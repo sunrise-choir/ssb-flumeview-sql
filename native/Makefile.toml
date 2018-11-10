@@ -68,7 +68,7 @@ dependencies = [
 ]
 [tasks.no-cross]
 script = [
-"cargo build",
+"cargo build --release",
 "make",
 "mv libbinding.so binding.node",
 ]
