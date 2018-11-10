@@ -12,7 +12,6 @@ use napi::*;
 use napi_sys::*;
 use ssb_legacy_msg_data::LegacyF64;
 
-#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct NapiValue {
     pub env: napi_env,
     pub value: napi_value,
