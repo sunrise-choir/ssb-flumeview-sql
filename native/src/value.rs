@@ -123,7 +123,6 @@ impl<'de> Visitor<'de> for ValueVisitor {
     }
 
     fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error> where A: SeqAccess<'de> {
-        // use the size hint, but put a maximum to the allocation because we can't trust the input
         let mut array = NapiArray::with_capacity(self.env, seq.size_hint().unwrap_or(0));
 
         while let Some(elem) = seq.next_element_seed(NapiEnv{env:self.env})? {
