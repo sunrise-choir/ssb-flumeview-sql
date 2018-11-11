@@ -225,11 +225,7 @@ pub fn delete_reference(env: napi_env, reference: napi_ref) {
 }
 
 pub fn create_int32(env: napi_env, num: i32) -> napi_value {
-    let mut result: napi_value = ptr::null_mut();
-    let status = unsafe { napi_create_int32(env, num, &mut result) };
-    debug_assert!(status == napi_status_napi_ok);
-
-    result
+    wrap_unsafe_create(env, num, napi_create_int32)
 }
 
 pub struct NapiEnv {
