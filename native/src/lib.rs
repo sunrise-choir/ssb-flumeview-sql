@@ -28,8 +28,8 @@ pub extern "C" fn parse_legacy(env: napi_env, info: napi_callback_info) -> napi_
     let arg = get_arg(env, info, 0);
     get_string(env, arg)
         .and_then(|string| {
-            let mut deserializer = JsonDeserializer::from_slice(&string.as_bytes());
-            //let mut deserializer = serde_json::Deserializer::from_str(&string);
+            //let mut deserializer = JsonDeserializer::from_slice(&string.as_bytes());
+            let mut deserializer = serde_json::Deserializer::from_str(&string);
             NapiEnv { env }
                 .deserialize(&mut deserializer)
                 .or(Err(errors::ErrorKind::ArgumentTypeError.into()))
@@ -44,8 +44,8 @@ pub extern "C" fn parse_legacy_buffer(env: napi_env, info: napi_callback_info) -
     let (ptr, size) = get_buffer_info(env, arg);
 
     let slice = unsafe { std::slice::from_raw_parts(ptr, size) };
-    let mut deserializer = JsonDeserializer::from_slice(slice);
-    //let mut deserializer = serde_json::Deserializer::from_str(&string);
+    //let mut deserializer = JsonDeserializer::from_slice(slice);
+    let mut deserializer = serde_json::Deserializer::from_slice(slice);
     NapiEnv { env }
         .deserialize(&mut deserializer)
         .map(|result| result.value)

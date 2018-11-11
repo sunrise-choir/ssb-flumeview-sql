@@ -119,6 +119,14 @@ impl<'de> Visitor<'de> for ValueVisitor {
         }
     }
 
+    fn visit_u64<E: Error>(self, v: u64) -> Result<Self::Value, E> {
+        self.visit_f64(v as f64)
+    }
+
+    fn visit_i64<E: Error>(self, v: i64) -> Result<Self::Value, E> {
+        self.visit_f64(v as f64)
+    }
+
     fn visit_str<E: Error>(self, v: &str) -> Result<Self::Value, E> {
         self.visit_string(v.to_string())
     }
