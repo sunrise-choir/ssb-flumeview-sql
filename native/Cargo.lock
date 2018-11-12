@@ -285,6 +285,7 @@ dependencies = [
  "serde_json 1.0.32 (registry+https://github.com/rust-lang/crates.io-index)",
  "ssb-legacy-msg 0.1.0 (git+https://github.com/ssbrs/ssb-legacy-msg)",
  "ssb-legacy-msg-data 0.1.0 (git+https://github.com/ssbrs/legacy-msg-data)",
+ "ssb-multiformats 0.1.0 (git+https://github.com/ssbrs/ssb-multiformats)",
  "strtod 0.0.1 (git+https://github.com/ssbrs/strtod)",
 ]
 

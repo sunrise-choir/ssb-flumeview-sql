@@ -57,6 +57,7 @@ pub fn create_object(env: napi_env) -> napi_value {
 
     object
 }
+
 pub fn get_undefined_value(env: napi_env) -> napi_value {
     let mut undefined_value: napi_value = ptr::null_mut();
     let status = unsafe { napi_get_undefined(env, &mut undefined_value) };

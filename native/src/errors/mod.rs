@@ -9,5 +9,6 @@ error_chain! {
         NotARecipient{}
         NapiError{}
         StringError{}
+        ParseError{}
     }
 }

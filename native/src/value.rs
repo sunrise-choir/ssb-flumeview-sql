@@ -133,6 +133,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
 
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E> {
         let value = create_string_utf8(self.env, &v);
+        //let value = create_buffer_copy(self.env, v.as_bytes());
         Ok(NapiValue {
             env: self.env,
             value,

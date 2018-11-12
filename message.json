@@ -1,0 +1,16 @@
+{
+  "previous": "%MwjdLV95P7VqHfrgS49nScXsyIwJfL229e5OSKc+0rc=.sha256",
+  "author": "@zurF8X68ArfRM71dF3mKh36W0xDM8QmOnAS5bYOq8hA=.ed25519",
+  "sequence": 2,
+  "timestamp": 1490467239118,
+  "hash": "sha256",
+  "content": {
+    "type": "pub",
+    "address": {
+      "host": "pub.mixmix.io",
+      "port": 8008,
+      "key": "@uRECWB4KIeKoNMis2UYWyB2aQPvWmS3OePQvBj2zClg=.ed25519"
+    }
+  },
+  "signature": "RTHdL6ASHbrS1VkppxKMRR4BNUOQDV75cqPw2DfvDxhF+hoO5tNYO+Hcn0u9yAJZcdBVJ2AlNr13UK86MIFxAA==.sig.ed25519"
+}
