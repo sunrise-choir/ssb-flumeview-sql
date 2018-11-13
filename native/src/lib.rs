@@ -30,36 +30,25 @@ use ssb_legacy_msg_data::value::ContentValue;
 use ssb_legacy_msg::{json};
 use ssb_multiformats::multikey::Multikey;
 
-use serde::{Deserialize};
-
-
-
 #[no_mangle]
 pub extern "C" fn parse_legacy(env: napi_env, info: napi_callback_info) -> napi_value {
     let arg = get_arg(env, info, 0);
     get_string(env, arg)
         .and_then(|string| {
             //let mut deserializer = JsonDeserializer::from_slice(&string.as_bytes());
-            //let mut deserializer = serde_json::Deserializer::from_str(&string);
-            let s: serde_json::Value = serde_json::from_str(&string).unwrap();
-            match s {
-                serde_json::Value::Object(_) => (), 
-                _ => ()
-            }
-            Ok(get_undefined_value(env))
-
-                //NapiEnv { env }
-                //.deserialize(&mut deserializer)
-                //.or(Err(errors::ErrorKind::ArgumentTypeError.into()))
+            let mut deserializer = serde_json::Deserializer::from_str(&string);
+            NapiEnv { env }
+                .deserialize(&mut deserializer)
+                .or(Err(errors::ErrorKind::ArgumentTypeError.into()))
+                .map(|result| result.value)
         })
-    //.map(|result| result.value)
     .unwrap_or_else(|_| get_undefined_value(env))
 }
+
 #[no_mangle]
 pub extern "C" fn parse_legacy_buffer(env: napi_env, info: napi_callback_info) -> napi_value {
 
     let arg = get_arg(env, info, 0);
-    let construct = get_arg(env, info, 1);
     let (ptr, size) = get_buffer_info(env, arg);
 
     let slice = unsafe { std::slice::from_raw_parts(ptr, size) };
@@ -76,15 +65,16 @@ pub extern "C" fn parse_legacy_buffer(env: napi_env, info: napi_callback_info) -
 #[derive(Serialize, Deserialize, Debug)]
 struct Message {
     key: String,
-    value: Value
+    value: Value,
+    timestamp: f64
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Value {
-    previous: String,
+    previous: serde_json::Value,
     author: String,
     sequence: u32,
-    timestamp: i64,
+    timestamp: f64,
     hash: String,
     content: serde_json::Value,
     signature: String
@@ -106,7 +96,6 @@ fn value_to_napi_value(env: napi_env, json_value: &serde_json::Value ) -> napi_v
             }
 
             array.array
-        
         },
         serde_json::Value::Object(ref o) => {
             let object = create_object(env);
@@ -122,44 +111,39 @@ fn value_to_napi_value(env: napi_env, json_value: &serde_json::Value ) -> napi_v
     }
 } 
 
-
 #[no_mangle]
 pub extern "C" fn parse_legacy_with_constructor(env: napi_env, info: napi_callback_info) -> napi_value {
     let arg = get_arg(env, info, 0);
-    let construct = get_arg(env, info, 1);
     get_string(env, arg)
         .and_then(|string| {
-            //let mut deserializer = JsonDeserializer::from_slice(&string.as_bytes());
-            //let mut deserializer = serde_json::Deserializer::from_str(&string);
-            match serde_json::from_str::<Value>(&string) {
+            match serde_json::from_str::<Message>(&string) {
                 Ok(msg) => {
-                    let mut content: napi_value = value_to_napi_value(env, &msg.content);
+                    let mut content: napi_value = value_to_napi_value(env, &msg.value.content);
 
                     //function sig in js: Message (key, previous, author, sequence, timestamp, hash, content, signature) {
                     let args = [
-                        get_undefined_value(env), //TODO:: do the key
-                        create_string_utf8(env, &msg.previous),
-                        create_string_utf8(env, &msg.author),
-                        wrap_unsafe_create(env, msg.sequence, napi_create_uint32),
-                        wrap_unsafe_create(env, msg.timestamp, napi_create_int64),
-                        create_string_utf8(env, &msg.hash),
+                        create_string_utf8(env, &msg.key),
+                        value_to_napi_value(env, &msg.value.previous),
+                        create_string_utf8(env, &msg.value.author),
+                        wrap_unsafe_create(env, msg.value.sequence, napi_create_uint32),
+                        wrap_unsafe_create(env, msg.value.timestamp, napi_create_double),
+                        create_string_utf8(env, &msg.value.hash),
                         content,
-                        create_string_utf8(env, &msg.signature)
+                        create_string_utf8(env, &msg.value.signature)
                     ];
 
+                    let constructor = get_arg(env, info, 1);
                     let mut result: napi_value = std::ptr::null_mut();
-                    let status = unsafe {napi_new_instance(env, construct, args.len(), &args[0] as *const napi_value, &mut result)};
+                    let status = unsafe {napi_new_instance(env, constructor, args.len(), &args[0] as *const napi_value, &mut result)};
                     debug_assert!(status == napi_status_napi_ok);
                     
                     Ok(result)
-
-
                 },
                 Err(_) => {
-                    println!("nope, couldn't parse the msg");
                     bail!(errors::ErrorKind::ParseError)
                 }
             }
         })
     .unwrap_or_else(|_| get_undefined_value(env))
 }
+

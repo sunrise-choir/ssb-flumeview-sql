@@ -1,0 +1,31 @@
+{
+  "key": "%rGK2t/ZAfy+wKyB/4aghjXVU788WRpQV9ChIZSy19M8=.sha256",
+  "value": {
+    "previous": "%HVFUsr0GLh5vkD1HO/mhL+Kvv3JL40QJhPtKWKOMbf4=.sha256",
+    "author": "@U5GvOKP/YUza9k53DSXxT0mk3PIrnyAmessvNfZl5E0=.ed25519",
+    "sequence": 1233,
+    "timestamp": 1511752741051,
+    "hash": "sha256",
+    "content": {
+      "type": "post",
+      "channel": "ssbc-grants",
+      "text": "# ssb-loomio proposal --Draft\n\n## Draft\n\nI'm hoping to gauge excitement / gather feedback on this idea.\n\n## What is loomio?\n\n[See the intro here](https://www.loomio.school/beginner/overview.html)\n\n**TL;DR**: Have discussions, create proposals, vote on a proposal, publish a decision.\n\n## Why do we need ssb-loomio?\n\nThere's a good argument that maybe ssb doesn't need any more apps right now, that we could focus on improving docs, improving tooling and making it easier for people to make their own apps.\nI think this is true **and** I think that the community needs an easier way to make decisions together. **Building ssb-loomio is tooling**. The last proposal thread was quite hard to follow. Having something like loomio would hopefully make it easier for people to engage.\n\n## Why would I be good at it?\n\nI built patch-gatherings which taught me how to make patch-core plugins. I work with [@mix](@ye+QM09iPcDJD6YvQYjoQc7sLF/IFhmNbEqgdzQo3lQ=.ed25519) (worked at loomio), and in the same space as [@robguthrie](@sruvKFMpjwK9mdktJzYOSHcb+yd1v7zqzpVUId/iJQ0=.ed25519) (still works at loomio) so I can pick their brains.\n\nI'm also super excited to work on this. Actually, not quite as excited as writing rust modules for ssb, but I think the community needs ssb-loomio more than it needs faster modules right now. And [@Aljoscha](@zurF8X68ArfRM71dF3mKh36W0xDM8QmOnAS5bYOq8hA=.ed25519) already has a rad proposal for this underway.\n\n## Timescale\n\nI'd hope to spread this over 2 months.\n\n## Possible features\n\nI've lifted the definitions straight from loomio's site. :)\nI can't build all these in that amount of time but am interested in people's opinions about which ones are most exciting.\n\n### Poll \n\nUse a poll to measure popularity or offer a choice.\nProvide some options to choose from. Decide if participants choose single or multiple options as their response.\nEveryone votes, and can enter a statement too if they like. Results are represented in a bar graph.\n\n### Ranked choice\n\nRanked choice is a voting method which allows each voter to respond with their preferences in order.\nIt's preferable when 'vote stealing' is a concern (ie, two somewhat popular options are similar enough that they end up sharing votes between them), and can be used to implement a Condorcet, or Instant Runoff style election.\n\n### Dot vote\n\nDot voting is a way to prioritise a list of options.\nParticipants are given a limited number of ‘dots’ which they can allocate however they like among the options provided to represent their own preferences.\nThe totals of the results are shown, as well as and the individual votes, so you can consider various points of view.\n\n### Check\n\nA check is a tool with many possible uses but only 2 responses: a tick (✔) or an x mark (✘). Participants will use the tick (✔) to say yes and the x mark (✘) to say no or unsure.\nUse it to engage people with an offer, like an RSVP: \"I'm coming to the event\" or \"I'll join the working group\".\nOr use it to track completion of a task: \"I've checked my contact details are correct\", or \"I've read the document and left my feedback\".\nA check has a goal, which is the number of participants you'd like. The goal indicates to the group if something needs more attention or is well subscribed.\n\n### Proposal\n\nA proposal is a tool for seeking collective agreement about a statement or course of action.\nParticipants can agree, abstain, disagree or block - and give a statement to explain their position.\nA pie chart gives an overview of the positions in the group, while the statements allow individual voices to be heard.\nDon't be discouraged if you don't see agreement at first, proposals are designed to surface issues that need resolving.\nWith good participation a proposal is a powerful mandate to take action.\n\n## Subjective weirdness\n\nLoomio offers a \"decision\" that's very concrete because all the votes live on one server. On ssb, we don't have the same ability to count votes objectively. You can only get a count from your subjective slice of the network. We might have an \"agree to be bound by that decision\" message you can post if you've seen that decision, agree it's legit and agree to be bound by it. Or something? It's a cool problem anyway.\n\n   ",
+      "mentions": [
+        {
+          "link": "@ye+QM09iPcDJD6YvQYjoQc7sLF/IFhmNbEqgdzQo3lQ=.ed25519",
+          "name": "mix"
+        },
+        {
+          "link": "@sruvKFMpjwK9mdktJzYOSHcb+yd1v7zqzpVUId/iJQ0=.ed25519",
+          "name": "robguthrie"
+        },
+        {
+          "link": "@zurF8X68ArfRM71dF3mKh36W0xDM8QmOnAS5bYOq8hA=.ed25519",
+          "name": "Aljoscha"
+        }
+      ]
+    },
+    "signature": "frTRBDI5sKVlhtezuCGArWvgivLZJLGTKnhn8W8L2MekK8BBcsnvWI/lpfcao0abEVeSiocS3dbN5ADfmDxuCA==.sig.ed25519"
+  },
+  "timestamp": 1537065588438
+}

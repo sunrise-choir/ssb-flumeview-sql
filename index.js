@@ -18,5 +18,5 @@ function Value (previous, author, sequence, timestamp, hash, content, signature)
 }
 
 module.exports.parseLegacyString = function parseLegacyString (string) {
-  return binding.parse_legacy_with_constructor(string, Message)
+  return binding.parse_legacy_with_constructor(string, Message) || binding.parse_legacy(string) || JSON.parse(string)
 }
