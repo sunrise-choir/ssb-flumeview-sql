@@ -11,6 +11,11 @@ Things I could do today:
     - can see that using ssb-legacy-msg is a promising path, (what to do with content is the big unknown) but I expect it to be slow. All I need is a fast parse and throw into an object.
     - How do I use the vanilla json parser?
       - Can I embed a serde_json::Value inside another struct? 
+        - don't think this help because I need to deserialize an arbitray thing
+      - How do I mostly parse a into a known shape and then hand off an unknown chunk to a visitor? 
+        - what's the api for a visitor?
+        
+      
   - finish exposing the bindings and call it done.
     - clmr
     - code docs

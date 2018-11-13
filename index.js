@@ -2,15 +2,16 @@
 
 var binding = require('./build/Release/binding.node')
 
-function Message (key, previous, author, sequence, hash, content, signature) {
+function Message (key, previous, author, sequence, timestamp, hash, content, signature) {
   this.key = key
-  this.value = new Value(previous, author, sequence, hash, content, signature)
+  this.value = new Value(previous, author, sequence, timestamp, hash, content, signature)
 }
 
-function Value (previous, author, sequence, hash, content, signature) {
+function Value (previous, author, sequence, timestamp, hash, content, signature) {
   this.previous = previous
   this.author = author
   this.sequence = sequence
+  this.timestamp = timestamp
   this.hash = hash
   this.content = content
   this.signature = signature
