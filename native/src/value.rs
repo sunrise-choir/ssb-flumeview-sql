@@ -58,8 +58,9 @@ impl Serialize for NapiValue {
                     }
                     s.end()
                 } else {
-                    let mut m = serializer.serialize_map(None)?;
-                    for (key, value) in get_object_map(self.env, self.value) {
+                    let object_map = get_object_map(self.env, self.value);
+                    let mut m = serializer.serialize_map(Some(object_map.len()))?;
+                    for (key, value) in object_map {
                         m.serialize_entry(
                             &key,
                             &NapiValue {
@@ -119,12 +120,21 @@ impl<'de> Visitor<'de> for ValueVisitor {
         }
     }
 
+    fn visit_u64<E: Error>(self, v: u64) -> Result<Self::Value, E> {
+        self.visit_f64(v as f64)
+    }
+
+    fn visit_i64<E: Error>(self, v: i64) -> Result<Self::Value, E> {
+        self.visit_f64(v as f64)
+    }
+
     fn visit_str<E: Error>(self, v: &str) -> Result<Self::Value, E> {
         self.visit_string(v.to_string())
     }
 
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E> {
         let value = create_string_utf8(self.env, &v);
+        //let value = create_buffer_copy(self.env, v.as_bytes());
         Ok(NapiValue {
             env: self.env,
             value,
