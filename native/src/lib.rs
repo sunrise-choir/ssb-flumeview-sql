@@ -26,7 +26,7 @@ use ssb_legacy_msg_data::cbor::CborDeserializer;
 use value::NapiValue;
 
 #[no_mangle]
-pub extern "C" fn stringify_legacy(env: napi_env, info: napi_callback_info) -> napi_value {
+pub extern "C" fn to_json(env: napi_env, info: napi_callback_info) -> napi_value {
     let arg = get_arg(env, info, 0);
     let message = NapiValue{env, value: arg};
     //serde_json::to_string(&message)
@@ -41,7 +41,7 @@ pub extern "C" fn stringify_legacy(env: napi_env, info: napi_callback_info) -> n
 }
 
 #[no_mangle]
-pub extern "C" fn encode_cbor(env: napi_env, info: napi_callback_info) -> napi_value {
+pub extern "C" fn to_cbor(env: napi_env, info: napi_callback_info) -> napi_value {
     let arg = get_arg(env, info, 0);
     let message = NapiValue{env, value: arg};
     ssb_legacy_msg_data::cbor::to_vec(&message)
@@ -65,7 +65,7 @@ pub extern "C" fn parse_cbor(env: napi_env, info: napi_callback_info) -> napi_va
 }
 
 #[no_mangle]
-pub extern "C" fn parse_legacy(env: napi_env, info: napi_callback_info) -> napi_value {
+pub extern "C" fn parse_json(env: napi_env, info: napi_callback_info) -> napi_value {
     let arg = get_arg(env, info, 0);
     get_string(env, arg)
         .and_then(|string| {

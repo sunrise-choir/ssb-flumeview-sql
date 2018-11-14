@@ -1,7 +1,7 @@
 var pull = require('pull-stream')
 var marky = require('marky')
 
-var {stringifyLegacy, encodeCbor, parseLegacy, parseCbor} = require('../');
+var {toJson, toCbor, parseJson, parseCbor} = require('../');
 var messages = require('./output.json').queue
 
 var messageStrings = messages.map(JSON.stringify)
@@ -25,25 +25,25 @@ pull(
     return marky
   }),
   pull.map((marky) => {
-    marky.mark('stringifyLegacy')
+    marky.mark('toJson')
 
-    messages.map(stringifyLegacy)
+    messages.map(toJson)
 
-    marky.stop('stringifyLegacy')
+    marky.stop('toJson')
     return marky
   }),
   pull.map((marky) => {
-    marky.mark('parseLegacy')
+    marky.mark('parseJson')
 
-    messageStrings.map(parseLegacy)
+    messageStrings.map(parseJson)
 
-    marky.stop('parseLegacy')
+    marky.stop('parseJson')
     return marky
   }),
   pull.map((marky) => {
     marky.mark('encode cbor')
 
-    var cbors = messages.map(encodeCbor)
+    var cbors = messages.map(toCbor)
 
     marky.stop('encode cbor')
 
