@@ -18,7 +18,7 @@
     "url": "https://github.com/ssbrs/ssb-legacy-msg-napi.git"
   },
   "scripts": {
-    "install": "prebuild-install -r napi -t 3 --verbose || npm run build-rs",
+    "install": "prebuild-install -r napi -t 3 || npm run build-rs",
     "build-rs": "./build-native.sh",
     "prebuild": "prebuild -r napi -t 3 --prepack ./build-native.sh",
     "build-all": "npm run build-rs && npm run prebuild",

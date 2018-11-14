@@ -3,7 +3,7 @@
 > Node bindings to parse ssb messages
 
 Provides methods to serialize / deserialize ssb-messages. Supports json and cbor serialisation / derserialisation. 
-This is is really just a node wrapper around [legacy-msg-data](https://github.com/ssbrs/legacy-msg-data)
+This is really just a node wrapper around [legacy-msg-data](https://github.com/ssbrs/legacy-msg-data)
 
 ## API
 
