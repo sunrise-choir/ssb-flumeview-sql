@@ -17,19 +17,19 @@ pull(
     return marky
   }),
   pull.map((marky) => {
-    marky.mark('stringifyLegacy')
-
-    messages.map(stringifyLegacy)
-
-    marky.stop('stringifyLegacy')
-    return marky
-  }),
-  pull.map((marky) => {
     marky.mark('JSON.parse')
 
     messageStrings.map(JSON.parse)
 
     marky.stop('JSON.parse')
+    return marky
+  }),
+  pull.map((marky) => {
+    marky.mark('stringifyLegacy')
+
+    messages.map(stringifyLegacy)
+
+    marky.stop('stringifyLegacy')
     return marky
   }),
   pull.map((marky) => {
