@@ -10,5 +10,6 @@ error_chain! {
         NapiError{}
         StringError{}
         ParseError{}
+        DeserError{}
     }
 }

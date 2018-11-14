@@ -58,8 +58,9 @@ impl Serialize for NapiValue {
                     }
                     s.end()
                 } else {
-                    let mut m = serializer.serialize_map(None)?;
-                    for (key, value) in get_object_map(self.env, self.value) {
+                    let object_map = get_object_map(self.env, self.value);
+                    let mut m = serializer.serialize_map(Some(object_map.len()))?;
+                    for (key, value) in object_map {
                         m.serialize_entry(
                             &key,
                             &NapiValue {

@@ -15,15 +15,17 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/pietgeursen/private-box-native.git"
+    "url": "https://github.com/ssbrs/ssb-legacy-msg-napi.git"
   },
   "scripts": {
+    "install": "prebuild-install || npm run build-rs",
     "build-rs": "./build-native.sh",
-    "prebuild": "prebuild -r napi --include-regex '\\.(node|so)$'",
+    "prebuild": "prebuild -r napi -t 3",
     "build-all": "npm run build-rs && npm run prebuild",
     "test": "tape test/*.js"
   },
   "devDependencies": {
+    "marky": "^1.2.1",
     "prebuild": "^8.1.0",
     "pull-stream": "^3.6.1",
     "tape": "^4.8.0"

@@ -71,4 +71,5 @@ script = [
 "cargo build --release",
 "make",
 "mv libbinding.so binding.node",
+"cp binding.node ../build/Release/"
 ]
