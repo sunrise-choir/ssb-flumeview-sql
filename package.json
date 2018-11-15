@@ -20,13 +20,13 @@
   "scripts": {
     "install": "prebuild-install -r napi -t 3 || npm run build-rs",
     "build-rs": "./build-native.sh",
-    "prebuild": "prebuild -r napi -t 3 --prepack ./build-native.sh",
+    "prebuild": "prebuild -r napi -t 3 --backend fakebuild --prepack ./build-native.sh",
     "build-all": "npm run build-rs && npm run prebuild",
     "test": "tape test/*.js"
   },
   "devDependencies": {
     "marky": "^1.2.1",
-    "prebuild": "^8.1.0",
+    "prebuild": "pietgeursen/prebuild",
     "pull-stream": "^3.6.1",
     "tape": "^4.8.0"
   }
