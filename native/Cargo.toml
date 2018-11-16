@@ -12,11 +12,15 @@ crate-type = ["staticlib"]
 error-chain = "0.12.0"
 ssb-legacy-msg-data = { git = "https://github.com/ssbrs/legacy-msg-data" }
 serde = "1.0.80"
+serde_cbor = "0.9.0"
 serde_derive = "1.0.80"
-serde_json = "1.0.32"
 base64 = "0.9.3"
 indexmap = "1.0.1"
 ryu-ecmascript = "0.1.1"
 # strtod = "0.0.2"
 strtod = { git = "https://github.com/ssbrs/strtod" }
 encode_unicode = "0.3.3"
+
+[dependencies.serde_json] 
+version = "1.0.32"
+features = ["preserve_order"]

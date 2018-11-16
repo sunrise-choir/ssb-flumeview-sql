@@ -1,7 +1,7 @@
 var pull = require('pull-stream')
 var marky = require('marky')
 
-var {toJson, toCbor, parseJson, parseCbor, parseJsonWithConstructor} = require('../');
+var {toJson, toCbor, parseJson, parseCbor, parseCborWithConstructor, parseJsonWithConstructor} = require('../');
 var messages = require('./output.json').queue
 
 var messageStrings = messages.map(JSON.stringify)
@@ -61,6 +61,11 @@ pull(
 
     marky.stop('parse cbor')
 
+    marky.mark('parse cbor with constructor')
+
+    cbors.map(parseCborWithConstructor)
+
+    marky.stop('parse cbor with constructor')
     return marky
   }),
   pull.drain((marky) => {

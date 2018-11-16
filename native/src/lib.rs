@@ -13,6 +13,7 @@ extern crate base64;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+extern crate serde_cbor;
 
 mod errors;
 mod napi;
@@ -93,14 +94,16 @@ impl Value {
 #[derive(Serialize, Deserialize, Debug)]
 struct Message {
     key: String,
-    value: Value
+    value: Value,
+    timestamp: f64,
 }
 
 impl Message {
     fn default()->Message{
         Message{
             key: String::default(),
-            value: Value::default()
+            value: Value::default(),
+            timestamp: 0.0
         }
     }
 }
@@ -151,6 +154,7 @@ fn value_to_napi_value(env: napi_env, val: serde_json::Value)->napi_value{
 
             for (key, val) in o
             {
+                //TODO: could use property descriptors here.
                 unsafe { napi_set_property(env, object, create_string_utf8(env, &key), value_to_napi_value(env, val) ) };
             }
 
@@ -158,7 +162,36 @@ fn value_to_napi_value(env: napi_env, val: serde_json::Value)->napi_value{
         },
     }
 }
+#[no_mangle]
+pub extern "C" fn parse_cbor_with_constructor(env: napi_env, info: napi_callback_info) -> napi_value {
+    let arg = get_arg(env, info, 0);
+    let constructor = get_arg(env, info, 1);
 
+    let (p_buff, buff_size) = get_buffer_info(env, arg);
+
+    let slice = unsafe { std::slice::from_raw_parts(p_buff, buff_size)};
+    serde_cbor::from_slice::<Message>(slice)
+        .map(|message|{
+            //function Message (key, timestamp, previous, author, sequence, timestamp, hash, content, signature) {
+            let args = [
+                create_string_utf8(env, &message.key),
+                wrap_unsafe_create(env, message.timestamp, napi_create_double),
+                value_to_napi_value(env, message.value.previous),
+                create_string_utf8(env, &message.value.author),
+                wrap_unsafe_create(env, message.value.sequence, napi_create_double),
+                wrap_unsafe_create(env, message.value.timestamp, napi_create_double),
+                create_string_utf8(env, &message.value.hash),
+                value_to_napi_value(env, message.value.content),
+                create_string_utf8(env, &message.value.signature)
+            ];
+
+            let mut object = std::ptr::null_mut();
+            let status = unsafe {napi_new_instance(env, constructor, args.len(), &args as *const napi_value, &mut object)};
+            
+            object
+        })
+        .unwrap_or_else(|_| get_undefined_value(env))
+}
 #[no_mangle]
 pub extern "C" fn parse_json_with_constructor(env: napi_env, info: napi_callback_info) -> napi_value {
     let arg = get_arg(env, info, 0);
@@ -170,9 +203,10 @@ pub extern "C" fn parse_json_with_constructor(env: napi_env, info: napi_callback
                 .map_err(|_|{errors::ErrorKind::ParseError.into()})
         })
         .map(|message|{
-            //function Message (key, previous, author, sequence, timestamp, hash, content, signature) {
+            //function Message (key, timestamp, previous, author, sequence, timestamp, hash, content, signature) {
             let args = [
                 create_string_utf8(env, &message.key),
+                wrap_unsafe_create(env, message.timestamp, napi_create_double),
                 value_to_napi_value(env, message.value.previous),
                 create_string_utf8(env, &message.value.author),
                 wrap_unsafe_create(env, message.value.sequence, napi_create_double),
