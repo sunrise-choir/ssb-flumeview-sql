@@ -26,6 +26,7 @@ use serde::de::DeserializeSeed;
 use ssb_legacy_msg_data::json::JsonDeserializer;
 use ssb_legacy_msg_data::cbor::CborDeserializer;
 use value::NapiValue;
+use std::ptr::{null, null_mut};
 
 #[no_mangle]
 pub extern "C" fn to_json(env: napi_env, info: napi_callback_info) -> napi_value {
@@ -59,7 +60,8 @@ pub extern "C" fn parse_cbor(env: napi_env, info: napi_callback_info) -> napi_va
     let (p_buff, buff_size) = get_buffer_info(env, arg);
 
     let slice = unsafe { std::slice::from_raw_parts(p_buff, buff_size)};
-    let mut deserializer = CborDeserializer::from_slice(slice);
+    let mut deserializer = CborDeserializer::from_slice(slice); //this one is slightly faster
+    //let mut deserializer = ssb_legacy_msg_data::cbor::from_slice::<Message>(slice)
     NapiEnv { env }
         .deserialize(&mut deserializer)
         .map(|result| result.value)
@@ -126,42 +128,54 @@ pub extern "C" fn parse_json(env: napi_env, info: napi_callback_info) -> napi_va
     .unwrap_or_else(|_| get_undefined_value(env))
 }
 
-fn value_to_napi_value(env: napi_env, val: serde_json::Value)->napi_value{
+fn value_to_napi_value(env: napi_env, val: &serde_json::Value)->napi_value{
 
-    match val {
+    match *val {
         serde_json::Value::Null => {
             get_null_value(env)
         },
         serde_json::Value::Bool(b) => {
             wrap_unsafe_create(env, b, napi_get_boolean)
         },
-        serde_json::Value::Number(n) => {
+        serde_json::Value::Number(ref n) => {
             wrap_unsafe_create(env, n.as_f64().unwrap(), napi_create_double)
         },
-        serde_json::Value::String(s) => {
+        serde_json::Value::String(ref s) => {
             create_string_utf8(env, &s)
         },
-        serde_json::Value::Array(a) => {
+        serde_json::Value::Array(ref a) => {
             let mut napi_array = NapiArray::with_capacity(env, a.len());
 
             for elem in a {
-                napi_array.push(value_to_napi_value(env, elem))
+                napi_array.push(value_to_napi_value(env, &elem))
             }
             napi_array.array
         },
-        serde_json::Value::Object(o) => {
+        serde_json::Value::Object(ref o) => {
             let object = create_object(env);
+            let descriptors: Vec<napi_property_descriptor> = o
+                .iter()
+                .map(|(key, val)|{
+                    napi_property_descriptor{
+                        utf8name: null(),
+                        name: create_string_utf8(env, key),
+                        method: None,
+                        getter: None,
+                        setter: None,
+                        value: value_to_napi_value(env, val),
+                        attributes: 0, 
+                        data: null_mut() 
+                    }
+                })
+                .collect();
 
-            for (key, val) in o
-            {
-                //TODO: could use property descriptors here.
-                unsafe { napi_set_property(env, object, create_string_utf8(env, &key), value_to_napi_value(env, val) ) };
-            }
+            let status = unsafe { napi_define_properties(env, object, descriptors.len(), descriptors.as_ptr() as * const napi_property_descriptor) };
 
             object
         },
     }
 }
+
 #[no_mangle]
 pub extern "C" fn parse_cbor_with_constructor(env: napi_env, info: napi_callback_info) -> napi_value {
     let arg = get_arg(env, info, 0);
@@ -170,18 +184,19 @@ pub extern "C" fn parse_cbor_with_constructor(env: napi_env, info: napi_callback
     let (p_buff, buff_size) = get_buffer_info(env, arg);
 
     let slice = unsafe { std::slice::from_raw_parts(p_buff, buff_size)};
-    serde_cbor::from_slice::<Message>(slice)
+    ssb_legacy_msg_data::cbor::from_slice::<Message>(slice)
+    //serde_cbor::from_slice::<Message>(slice)
         .map(|message|{
             //function Message (key, timestamp, previous, author, sequence, timestamp, hash, content, signature) {
             let args = [
                 create_string_utf8(env, &message.key),
                 wrap_unsafe_create(env, message.timestamp, napi_create_double),
-                value_to_napi_value(env, message.value.previous),
+                value_to_napi_value(env, &message.value.previous),
                 create_string_utf8(env, &message.value.author),
                 wrap_unsafe_create(env, message.value.sequence, napi_create_double),
                 wrap_unsafe_create(env, message.value.timestamp, napi_create_double),
                 create_string_utf8(env, &message.value.hash),
-                value_to_napi_value(env, message.value.content),
+                value_to_napi_value(env, &message.value.content),
                 create_string_utf8(env, &message.value.signature)
             ];
 
@@ -207,12 +222,12 @@ pub extern "C" fn parse_json_with_constructor(env: napi_env, info: napi_callback
             let args = [
                 create_string_utf8(env, &message.key),
                 wrap_unsafe_create(env, message.timestamp, napi_create_double),
-                value_to_napi_value(env, message.value.previous),
+                value_to_napi_value(env, &message.value.previous),
                 create_string_utf8(env, &message.value.author),
                 wrap_unsafe_create(env, message.value.sequence, napi_create_double),
                 wrap_unsafe_create(env, message.value.timestamp, napi_create_double),
                 create_string_utf8(env, &message.value.hash),
-                value_to_napi_value(env, message.value.content),
+                value_to_napi_value(env, &message.value.content),
                 create_string_utf8(env, &message.value.signature)
             ];
 
