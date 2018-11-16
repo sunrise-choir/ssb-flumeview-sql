@@ -27,6 +27,8 @@ use ssb_legacy_msg_data::json::JsonDeserializer;
 use ssb_legacy_msg_data::cbor::CborDeserializer;
 use value::NapiValue;
 use std::ptr::{null, null_mut};
+use std::os::raw::c_char;
+use std::{debug_assert};
 
 #[no_mangle]
 pub extern "C" fn to_json(env: napi_env, info: napi_callback_info) -> napi_value {
@@ -157,19 +159,20 @@ fn value_to_napi_value(env: napi_env, val: &serde_json::Value)->napi_value{
                 .iter()
                 .map(|(key, val)|{
                     napi_property_descriptor{
-                        utf8name: null(),
+                        utf8name: null(), // key.as_ptr() as *const c_char,
                         name: create_string_utf8(env, key),
                         method: None,
                         getter: None,
                         setter: None,
                         value: value_to_napi_value(env, val),
-                        attributes: 0, 
+                        attributes: napi_property_attributes_napi_enumerable, 
                         data: null_mut() 
                     }
                 })
                 .collect();
 
             let status = unsafe { napi_define_properties(env, object, descriptors.len(), descriptors.as_ptr() as * const napi_property_descriptor) };
+            debug_assert!(status == napi_status_napi_ok);
 
             object
         },

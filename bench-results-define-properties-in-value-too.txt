@@ -1,0 +1,8 @@
+JSON.stringify 442.866316
+JSON.parse 581.15481
+toJson 2359.176595
+parseJson 2638.2198590000007
+parseJsonConstructor 767.0899740000004
+encode cbor 2098.2090500000004
+parse cbor 1143.1724009999998
+parse cbor with constructor 661.0616489999993
