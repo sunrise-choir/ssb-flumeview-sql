@@ -1,5 +1,5 @@
 var test = require('tape')
-var {parseJson, toJson, toCbor, parseCbor, parseJsonWithConstructor} = require('../')
+var {parseJson, toJson, toCbor, parseCbor, parseJsonWithConstructor, parseCborWithConstructor} = require('../')
 
 var testMessage = require('./simple.json')
 var testString = JSON.stringify(testMessage)
@@ -33,6 +33,9 @@ test('encode / decode cbor', function(t) {
   var encodedMessage = toCbor(testMessage) 
   var parsedMessage = parseCbor(encodedMessage)
 
+  t.deepEqual(parsedMessage, testMessage)
+
+  parsedMessage = parseCborWithConstructor(encodedMessage)
   t.deepEqual(parsedMessage, testMessage)
   t.end()
 })
