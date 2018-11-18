@@ -7,6 +7,8 @@ extern "C" {
   extern napi_value parse_json_with_constructor(napi_env, napi_callback_info);
   extern napi_value parse_cbor_with_constructor(napi_env, napi_callback_info);
 
+  extern napi_value parse_json_async(napi_env, napi_callback_info);
+
   extern napi_value parse_json(napi_env, napi_callback_info);
   extern napi_value parse_cbor(napi_env, napi_callback_info);
 
@@ -22,12 +24,13 @@ napi_value Init(napi_env env, napi_value exports) {
   napi_property_descriptor addDescriptor[] = {
     DECLARE_NAPI_METHOD("parseJson", parse_json),
     DECLARE_NAPI_METHOD("parseJsonWithConstructor", parse_json_with_constructor),
+    DECLARE_NAPI_METHOD("parseJsonAsync", parse_json_async),
     DECLARE_NAPI_METHOD("parseCborWithConstructor", parse_cbor_with_constructor),
     DECLARE_NAPI_METHOD("parseCbor", parse_cbor),
     DECLARE_NAPI_METHOD("toCbor", to_cbor),
     DECLARE_NAPI_METHOD("toJson", to_json)
   };
-  status = napi_define_properties(env, exports, 6 , addDescriptor);
+  status = napi_define_properties(env, exports, sizeof(addDescriptor) / sizeof(addDescriptor[0]) , addDescriptor);
   assert(status == napi_ok);
   return exports;
 }

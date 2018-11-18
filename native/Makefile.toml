@@ -68,7 +68,16 @@ dependencies = [
 ]
 [tasks.no-cross]
 script = [
+"cmake --Release .",
 "cargo build --release",
+"make",
+"mv libbinding.so ../build/Release/binding.node",
+]
+
+[tasks.no-cross-debug]
+script = [
+"cmake --Debug .",
+"cargo build",
 "make",
 "mv libbinding.so ../build/Release/binding.node",
 ]

@@ -22,6 +22,9 @@ module.exports = {
   parseJsonWithConstructor: function(string) {
     return binding.parseJsonWithConstructor(string, Message)
   },
+  parseJsonAsync: function(string,cb) {
+    binding.parseJsonAsync(Buffer.from(string), Message, cb)
+  },
   parseCborWithConstructor: function(string) {
     return binding.parseCborWithConstructor(string, Message)
   },

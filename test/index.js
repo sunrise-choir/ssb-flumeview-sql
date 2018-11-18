@@ -1,5 +1,5 @@
 var test = require('tape')
-var {parseJson, toJson, toCbor, parseCbor, parseJsonWithConstructor, parseCborWithConstructor} = require('../')
+var {parseJson, parseJsonAsync, toJson, toCbor, parseCbor, parseJsonWithConstructor, parseCborWithConstructor} = require('../')
 
 var testMessage = require('./simple.json')
 var testString = JSON.stringify(testMessage)
@@ -8,6 +8,14 @@ test('parses ok', function (t) {
   var actual = parseJson(testString)
   t.deepEqual(actual, testMessage)
   t.end()
+})
+
+test.only('parses async', function (t) {
+  parseJsonAsync(testString, function(err, actual) {
+    t.error(err)
+    t.deepEqual(actual, testMessage)
+    t.end()
+  })
 })
 
 test('parses with constructor ok', function (t) {

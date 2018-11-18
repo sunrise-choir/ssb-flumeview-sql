@@ -1,7 +1,7 @@
 var pull = require('pull-stream')
 var marky = require('marky')
 
-var {toJson, toCbor, parseJson, parseCbor, parseCborWithConstructor, parseJsonWithConstructor} = require('../');
+var {toJson, toCbor, parseJson, parseJsonAsync, parseCbor, parseCborWithConstructor, parseJsonWithConstructor} = require('../');
 var messages = require('./output.json').queue
 
 var messageStrings = messages.map(JSON.stringify)
@@ -47,6 +47,19 @@ pull(
 
     marky.stop('parseJsonConstructor')
     return marky
+  }),
+  pull.asyncMap((marky, cb) => {
+    marky.mark('parseJsonAsync')
+
+    pull(
+      pull.values(messageStrings),
+      pull.asyncMap(parseJsonAsync),
+      pull.collect(function() {
+        marky.stop('parseJsonAsync')
+        cb(null, marky)
+      })
+    )
+
   }),
   pull.map((marky) => {
     marky.mark('encode cbor')

@@ -2,6 +2,7 @@ cd native
 
 mkdir -p ../build/Release
 cargo make no-cross
+#cargo make no-cross-debug
 # cargo make cross \
 #   --env DOCKER_CROSS_IMAGE_NAME="linux-x64"\
 #   --env DOCKER_CROSS_TRIPLE="x86_64-unknown-linux-gnu"\

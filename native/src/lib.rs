@@ -27,8 +27,10 @@ use ssb_legacy_msg_data::json::JsonDeserializer;
 use ssb_legacy_msg_data::cbor::CborDeserializer;
 use value::NapiValue;
 use std::ptr::{null, null_mut};
-use std::os::raw::c_char;
+use std::os::raw::{c_char, c_void};
 use std::{debug_assert};
+use std::alloc::{alloc, dealloc, Layout};
+use std::slice;
 
 #[no_mangle]
 pub extern "C" fn to_json(env: napi_env, info: napi_callback_info) -> napi_value {
@@ -70,7 +72,7 @@ pub extern "C" fn parse_cbor(env: napi_env, info: napi_callback_info) -> napi_va
         .unwrap_or_else(|_| get_undefined_value(env))
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Value {
     previous: serde_json::Value,
     author: String,
@@ -95,7 +97,7 @@ impl Value {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Message {
     key: String,
     value: Value,
@@ -205,6 +207,7 @@ pub extern "C" fn parse_cbor_with_constructor(env: napi_env, info: napi_callback
 
             let mut object = std::ptr::null_mut();
             let status = unsafe {napi_new_instance(env, constructor, args.len(), &args as *const napi_value, &mut object)};
+            debug_assert!(status == napi_status_napi_ok);
             
             object
         })
@@ -236,8 +239,193 @@ pub extern "C" fn parse_json_with_constructor(env: napi_env, info: napi_callback
 
             let mut object = std::ptr::null_mut();
             let status = unsafe {napi_new_instance(env, constructor, args.len(), &args as *const napi_value, &mut object)};
+            debug_assert!(status == napi_status_napi_ok);
             
             object
         })
         .unwrap_or_else(|_| get_undefined_value(env))
+}
+
+
+struct RawSlice {
+    inner: (*const u8, usize)
+}
+
+impl Default for RawSlice {
+    fn default()->RawSlice {
+        RawSlice{inner: (null(), 0)}
+    }
+}
+
+struct ParseContext<T: Default> {
+    input_ref: napi_ref,
+    cb_ref: napi_ref,
+    constructor_ref: napi_ref,
+
+    work: napi_async_work,
+    message: Option<Result<Message, errors::ErrorKind>>,
+    thing_to_parse: T
+}
+
+impl<T: Default> ParseContext<T> {
+    /// Allocate. Will not be automatically dropped.
+    fn alloc()-> *mut ParseContext<T>{
+        let layout = Layout::new::<ParseContext<T>>();
+        unsafe {alloc(layout) as *mut ParseContext<T>}
+    }
+}
+
+extern "C" fn delete_context<T: Default>(arg: *mut c_void) {
+    let context = unsafe { &mut *(arg as *mut ParseContext<T>) };
+    let layout = Layout::for_value(&context);
+
+    unsafe {dealloc(arg as *mut u8, layout)}
+}
+
+impl<T: Default> Default for ParseContext<T> {
+    fn default()-> ParseContext<T> {
+        ParseContext {
+            input_ref: null_mut(),
+            cb_ref: null_mut(),
+            constructor_ref: null_mut(),
+
+            work: null_mut(),
+            message: None,
+            thing_to_parse: T::default()
+        }
+    }
+}
+
+impl <T: Default> Drop for ParseContext<T> {
+    fn drop(&mut self){
+        println!("dropping");
+    }
+}
+
+extern "C" fn parse_json_async_execute(_env: napi_env, data: *mut c_void) {
+    println!("execute");
+    let context = unsafe { data as *mut ParseContext<&[u8]> };
+
+    let slice = unsafe { (*context).thing_to_parse.clone() };
+    std::mem::forget(slice);
+
+    println!("about to derserialize");
+    unsafe {
+
+        println!("message is {:?}",(*context).message );
+        (*context).message = Some(serde_json::from_slice::<Message>(slice)
+                                  .map_err(|_|{errors::ErrorKind::ParseError.into()}));
+
+        println!("message is {:?}",(*context).message );
+    };
+    
+}
+
+extern "C" fn parse_json_async_complete(env: napi_env, _status: napi_status, data: *mut c_void) {
+    println!("complete");
+    let context = unsafe { &mut *(data as *mut ParseContext<&[u8]>) };
+    println!("message is {:?}",(*context).message );
+
+    let cb = get_reference_value(env, context.cb_ref);
+    let constructor = get_reference_value(env, context.constructor_ref);
+
+    let result = match context.message {
+        Some(Ok(ref message)) => {
+            println!("before we mess with the stuff in message");
+            let args = [
+                create_string_utf8(env, &message.key),
+                wrap_unsafe_create(env, message.timestamp, napi_create_double),
+                value_to_napi_value(env, &message.value.previous),
+                create_string_utf8(env, &message.value.author),
+                wrap_unsafe_create(env, message.value.sequence, napi_create_double),
+                wrap_unsafe_create(env, message.value.timestamp, napi_create_double),
+                create_string_utf8(env, &message.value.hash),
+                value_to_napi_value(env, &message.value.content),
+                create_string_utf8(env, &message.value.signature)
+            ];
+
+            println!("after we mess with the stuff in message");
+            let mut object = std::ptr::null_mut();
+            let status = unsafe {napi_new_instance(env, constructor, args.len(), &args as *const napi_value, &mut object)};
+            debug_assert!(status == napi_status_napi_ok);
+
+            object
+        },
+        _ => get_undefined_value(env)
+    };
+
+    let args = [get_undefined_value(env), result];
+    let mut global: napi_value = null_mut();
+    let mut return_value: napi_value = null_mut();
+
+    unsafe {
+        napi_get_global(env, &mut global);
+        napi_call_function(
+            env,
+            global,
+            cb,
+            2,
+            &args[0] as *const napi_value,
+            &mut return_value,
+        );
+    };
+
+    delete_reference(env, context.input_ref);
+    delete_reference(env, context.cb_ref);
+    delete_reference(env, context.constructor_ref);
+
+    //let status = unsafe {napi_add_env_cleanup_hook(env, Some(delete_context::<RawSlice>), context as *mut ParseContext<&[u8]> as *mut c_void)};
+    unsafe {
+        napi_delete_async_work(env, context.work);
+        delete_context::<&[u8]>(context as *mut ParseContext<&[u8]> as *mut c_void);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn parse_json_async(env: napi_env, info: napi_callback_info) -> napi_value { 
+    
+    let context = ParseContext::<&[u8]>::alloc();
+
+    println!("added cleanup hook");
+    
+    let message = Some(Ok(Message::default()));
+    
+    println!("created default message");
+
+    unsafe {
+        (*context).message = message;
+        println!("context message {:?}", (*context).message) 
+    };
+
+    let input = get_arg(env, info, 0);
+    let constructor = get_arg(env, info, 1);
+    let cb = get_arg(env, info, 2);
+
+    unsafe {
+        (*context).input_ref = create_reference(env, input);
+        (*context).cb_ref = create_reference(env, cb);
+        (*context).constructor_ref = create_reference(env, constructor);
+    }
+
+    println!("after creating refs");
+    
+    let (p_buff, buff_size) = get_buffer_info(env, input);
+    let slice = unsafe { std::slice::from_raw_parts(p_buff, buff_size)};
+
+    unsafe {
+        (*context).thing_to_parse = slice; 
+    }
+
+    std::mem::forget(slice);
+
+    let work_name = create_string_utf8(env, "parse_json_async");
+    let status = unsafe {napi_create_async_work(env, null_mut(), work_name, Some(parse_json_async_execute), Some(parse_json_async_complete), context as *mut c_void, &mut (*context).work )};
+    debug_assert!(status == napi_status_napi_ok);
+
+
+    println!("about to queue work");
+    let status = unsafe {napi_queue_async_work(env, (*context).work)};
+    debug_assert!(status == napi_status_napi_ok);
+
+    get_undefined_value(env)
 }
