@@ -2,6 +2,13 @@
 
 > Node bindings to to sql flumeview on a ssb database 
 
+- differs from the current idea of a flumeview
+  - doesn't plug into a js flume log, uses it's own internal rust based flumelog
+  - read only, points at the offset file (log.offset)
+  - supports building the view in chunks to control cpu time and allow queries to be handled in between building the view.
+
+- supports querying the view, even if the view is behind the log.
+
 
 ## API
 

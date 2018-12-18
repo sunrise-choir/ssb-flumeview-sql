@@ -1,7 +1,7 @@
 {
   "name": "ssb-flumeview-sql",
   "version": "0.1.0",
-  "description": "Node bindings to to sql flumeview on a ssb database",
+  "description": "Node bindings to a sql flumeview on a ssb database",
   "main": "index.js",
   "author": "Piet Geursen <pietgeursen@gmail.com>",
   "license": "AGPL3",
