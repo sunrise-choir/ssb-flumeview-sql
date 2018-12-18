@@ -1,49 +1,65 @@
 var test = require('tape')
-var {parseJson, parseJsonAsync, toJson, toCbor, parseCbor, parseJsonWithConstructor, parseCborWithConstructor} = require('../')
+var Db = require('../')
 
-var testMessage = require('./simple.json')
-var testString = JSON.stringify(testMessage)
+test.skip('create', function (t) {
+  var db = Db('/tmp/test.offset', function () {
 
-test('parses ok', function (t) {
-  var actual = parseJson(testString)
-  t.deepEqual(actual, testMessage)
-  t.end()
-})
-
-test.only('parses async', function (t) {
-  parseJsonAsync(testString, function(err, actual) {
-    t.error(err)
-    t.deepEqual(actual, testMessage)
-    t.end()
   })
-})
-
-test('parses with constructor ok', function (t) {
-  var actual = parseJsonWithConstructor(testString)
-  t.deepEqual(actual, testMessage)
-  t.end()
-})
-test.skip('parses weird failing thing ok', function (t) {
-  var testMessage = require('./weird-failure.json')
-  var testString = JSON.stringify(testMessage)
-  var actual = parseJson(testString)
-  t.ok(actual)
+  t.ok(db)
   t.end()
 })
 
-test('stringify message', function(t) {
-  var string = toJson(testMessage) 
-  t.deepEqual(JSON.parse(string), testMessage)
+test('create throws when path is not a string', function (t) {
+  t.throws(function () {
+    Db(null, function () {
+
+    })
+  })
   t.end()
 })
 
-test('encode / decode cbor', function(t) {
-  var encodedMessage = toCbor(testMessage) 
-  var parsedMessage = parseCbor(encodedMessage)
+test('create throws when path is not a valid path', function (t) {
+  t.throws(function () {
+    Db('/', null)
+  })
+  t.end()
+})
 
-  t.deepEqual(parsedMessage, testMessage)
+test('create throws when obv is not a function', function (t) {
+  t.throws(function () {
+    Db('/tmp/test.offset', null)
+  })
+  t.end()
+})
 
-  parsedMessage = parseCborWithConstructor(encodedMessage)
-  t.deepEqual(parsedMessage, testMessage)
+test('indexing does not happen until triggered by a call to update', function (t) {
+  t.end()
+})
+
+test('update only indexes chunks of a given size', function (t) {
+  t.end()
+})
+
+test('a simple query', function (t) {
+  t.end()
+})
+
+test('a live query only updates when since emits a new value, and only if that value is different to last', function (t) {
+  t.end()
+})
+
+test('can query even when view is behing log', function (t) {
+  t.end()
+})
+
+test('query will only call back when up to date with provided sequence', function (t) {
+  t.end()
+})
+
+test('progress', function (t) {
+  t.end()
+})
+
+test('can check db integrity', function (t) {
   t.end()
 })

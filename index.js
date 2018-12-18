@@ -1,36 +1,56 @@
 'use strict'
+var Push = require('pull-pushable')
+var Obv = require('obv')
 
 var binding = require('./build/Release/binding.node')
 
-function Message (key, ts, previous, author, sequence, timestamp, hash, content, signature) {
-  this.key = key
-  this.value = new Value(previous, author, sequence, timestamp, hash, content, signature)
-  this.timestamp = ts
-}
+module.exports = function SsbDb (path, since, cb) {
+  binding.init(path, function (err, db) {
+    if (err) return cb(err)
 
-function Value (previous, author, sequence, timestamp, hash, content, signature) {
-  this.previous = previous
-  this.author = author
-  this.sequence = sequence
-  this.timestamp = timestamp
-  this.hash = hash
-  this.content = content
-  this.signature = signature
-}
+    var updated = Obv()
 
-module.exports = {
-  parseJsonWithConstructor: function(string) {
-    return binding.parseJsonWithConstructor(string, Message)
-  },
-  parseJsonAsync: function(string,cb) {
-    binding.parseJsonAsync(Buffer.from(string), Message, cb)
-  },
-  parseCborWithConstructor: function(string) {
-    return binding.parseCborWithConstructor(string, Message)
-  },
-  parseJson: binding.parseJson,
-  parseCbor: binding.parseCbor,
-  toCbor: binding.toCbor,
-  toJson: binding.toJson
-}
+    // TODO: Things still to work out:
+    // - maybe db init shouldn't be async
+    // - query should work asap, even if there's indexing to do.
+    // - progress / status
+    // - ric + opts.chunkSize for background processing?
 
+    // TODO: this still has a one to one coupling between appends to the log and view updates.
+    since(function (seq) {
+      db.update(seq, function (err) {
+        if (err) throw err
+        updated.set(seq)
+      })
+    })
+
+    function query (query, opts) {
+      opts = opts || {}
+
+      if (typeof (query) !== 'string') {
+        throw new TypeError('Expected query to be a string')
+      }
+
+      var p = Push()
+
+      function pushResult (err, result) {
+        if (err) throw err // TODO: maybe don't throw here?
+        p.push(result)
+      }
+
+      if (opts.live) {
+        updated(function (seq) {
+          db.query(query, pushResult)
+        })
+      } else {
+        db.query(query, pushResult)
+      }
+
+      return p
+    }
+
+    cb(null, {
+      query
+    })
+  })
+}
