@@ -2,32 +2,35 @@ var test = require('tape')
 var Db = require('../')
 
 test.skip('create', function (t) {
-  var db = Db('/tmp/test.offset', function () {
-
-  })
+  var db = Db('/tmp/test.offset', '/tmp/test.sqlite')
   t.ok(db)
   t.end()
 })
 
-test('create throws when path is not a string', function (t) {
-  t.throws(function () {
-    Db(null, function () {
-
-    })
-  })
+test.skip('db has function getLatest ', function (t) {
+  var db = Db('/tmp/test.offset', '/tmp/test.sqlite')
+  t.equal(typeof (db.getLatest), 'function')
   t.end()
 })
 
-test('create throws when path is not a valid path', function (t) {
-  t.throws(function () {
-    Db('/', null)
-  })
+test.skip('db has function query ', function (t) {
+  var db = Db('/tmp/test.offset', '/tmp/test.sqlite')
+  t.equal(typeof (db.query), 'function')
   t.end()
 })
 
-test('create throws when obv is not a function', function (t) {
+test.skip('db has function process ', function (t) {
+  var db = Db('/tmp/test.offset', '/tmp/test.sqlite')
+  t.equal(typeof (db.process), 'function')
+  t.end()
+})
+
+test('create throws when paths are not strings', function (t) {
   t.throws(function () {
-    Db('/tmp/test.offset', null)
+    Db(null, '')
+  })
+  t.throws(function () {
+    Db('', null)
   })
   t.end()
 })

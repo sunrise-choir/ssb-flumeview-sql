@@ -1,6 +1,6 @@
 # ssb-flumeview-sql 
 
-> Node bindings to to sql flumeview on a ssb database 
+> Node bindings to a sql flumeview of a ssb database 
 
 - differs from the current idea of a flumeview
   - doesn't plug into a js flume log, uses it's own internal rust based flumelog
@@ -19,30 +19,30 @@ var SqlView = require('ssb-flumeview-sql')
 
 var sqlView = SqlView('/path/to/log.offset', '/path/to/view.sqlite') 
 
-//So far, nothing much has happened. A new sqlite db is created if it doesn't exist. No indexing is happening automatically.
+// So far, nothing much has happened. A new sqlite db is created if it doesn't exist. No indexing is happening automatically.
 
-console.log(sqlView.getLatest()) => 100 // Let's say that last time this ran, it inserted up to sequence number 100 in the view.
-console.log(db.since.value) => 1000 // Ok, the flume db has up to sequence 1000, so the view is behind.
+console.log(sqlView.getLatest()) => 100 // Last time this ran, it inserted up to sequence number 100 in the view.
+console.log(db.since.value) => 1000 // Ok, the flume db has up to sequence 1000, so the view is behind the log.
 
-//Let's create a query that will get us whatever is in the view right now.
+// Create a query that will get us whatever is in the view right now.
 sqlView.query({ query: "SELECT * message WHERE content_type='post'" }, function(err, result){
   // => Immediately logs results of the query
   console.log(result)
 })
 
-//Let's create a query that will wait until the view is up to a certain sequence 
-sqlView.query({ query: "SELECT * message WHERE content_type='post'", whenUpTo: 1000 }, function(err, result){
+// Create a query that will wait until the view is up to a certain sequence 
+sqlView.query({ query: "SELECT * message WHERE content_type='post'", whenUpToSequence: 1000 }, function(err, result){
   console.log(result)
 })
 
 // Let's get some more data into the view, but throttled so it's not too cpu hungry. (Assumes you can use `requestIdleCallback`)
 requestIdleCallback(function(deadline){
   while(deadline.timeRemaing > 0 || deadline.didTimeout){
-    sqlView.process({chunkSize: 100})
+    sqlView.process({chunkSize: 500})
   }
 })
 
-// The query waiting for sequence number 1000 will eventually callback when enough items are added to the view.
+// The query waiting for sequence number 1000 will eventually call back when enough items are added to the view.
 
 ```
 
@@ -59,7 +59,7 @@ var sqlView = SqlView('/path/to/log.offset', '/path/to/view.sqlite')
 
 - `opts.query` (required) - sql query string.
 
-- `opts.whenUpTo` (optional) - sequence number the view must be up to before running the query. Omitting this means the query will be executed immediately, even though the view might be behind the log.
+- `opts.whenUpToSequence` (optional) - sequence number the view must be up to before running the query. Omitting this means the query will be executed immediately, even though the view might be behind the log.
 
 `cb` is a node-style, error first callback:
 
@@ -74,16 +74,13 @@ function cb (err, results){
 }
 ```
 
-### sqlView.process(opts = {}, cb)
+### sqlView.process(opts = {})
 
 `opts` is mandatory and has some required and optional fields:
 
 - `opts.chunkSize` (optional) - Sets the maximum number of items to process. If this is omitted it will process all entries, bringing the view up to date with the log.
 
-`cb` is optional.
-
-- If cb is provided the query will execute asynchronously on a libuv thread. Useful if you want to utilise multiple processors.
-- If cb is not provided then processing will block this thread while executing. This is useful if you want to limit resource use of processing using something like `requestIdleCallback` like in the example.
+- Note that processing will block this thread while executing. If you want to limit resource use of processing, use something like `requestIdleCallback` like in the example. Also be careful not to make `opts.chunkSize` too large. As a starting point, my machine processes 10000 entries in 140ms.
 
 ## Install
 
