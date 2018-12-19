@@ -25,24 +25,15 @@ console.log(sqlView.getLatest()) => 100 // Let's say that last time this ran, it
 console.log(db.since.value) => 1000 // Ok, the flume db has up to sequence 1000, so the view is behind.
 
 //Let's create a query that will get us whatever is in the view right now.
-pull(
-  sqlView.query("SELECT * message WHERE content_type='post'", {live: false}),
-  pull.log()
-)
-// => Immediately logs results of the query
-
+sqlView.query({ query: "SELECT * message WHERE content_type='post'" }, function(err, result){
+  // => Immediately logs results of the query
+  console.log(result)
+})
 
 //Let's create a query that will wait until the view is up to a certain sequence 
-pull(
-  sqlView.query("SELECT * message WHERE content_type='post'", {whenUpTo: 1000, live: false}),
-  pull.log()
-)
-
-//Let's create a live query that will emit whenever there are new values added. 
-pull(
-  sqlView.query("SELECT * message WHERE content_type='post'", {live: true, old: false}),
-  pull.log()
-)
+sqlView.query({ query: "SELECT * message WHERE content_type='post'", whenUpTo: 1000 }, function(err, result){
+  console.log(result)
+})
 
 // Let's get some more data into the view, but throttled so it's not too cpu hungry. (Assumes you can use `requestIdleCallback`)
 requestIdleCallback(function(deadline){
@@ -51,7 +42,7 @@ requestIdleCallback(function(deadline){
   }
 })
 
-// The live stream and the stream waiting for sequence number 1000 will eventually emit as new items are added to the view.
+// The query waiting for sequence number 1000 will eventually callback when enough items are added to the view.
 
 ```
 
@@ -60,8 +51,6 @@ requestIdleCallback(function(deadline){
 ```js
 
 ```
-
-
 ## Install
 
 With [npm](https://npmjs.org/) installed, run
