@@ -38,7 +38,7 @@ sqlView.query({ query: "SELECT * message WHERE content_type='post'", whenUpTo: 1
 // Let's get some more data into the view, but throttled so it's not too cpu hungry. (Assumes you can use `requestIdleCallback`)
 requestIdleCallback(function(deadline){
   while(deadline.timeRemaing > 0 || deadline.didTimeout){
-    sqlView.process({maxNumItemsToProcess: 100})
+    sqlView.process({chunkSize: 100})
   }
 })
 
@@ -61,29 +61,29 @@ var sqlView = SqlView('/path/to/log.offset', '/path/to/view.sqlite')
 
 - `opts.whenUpTo` (optional) - sequence number the view must be up to before running the query. Omitting this means the query will be executed immediately, even though the view might be behind the log.
 
-- `cb` is a node-style, error first callback:
+`cb` is a node-style, error first callback:
 
 ```js
-  function cb (err, results){
-    if(err){
-      //handle the error
-    }
-    
-    //results is an array
-    results.forEach(console.log)
+function cb (err, results){
+  if(err){
+    //handle the error
   }
+  
+  //results is an array
+  results.forEach(console.log)
+}
 ```
 
 ### sqlView.process(opts = {}, cb)
 
 `opts` is mandatory and has some required and optional fields:
 
-- `opts.maxNumItemsToProcess` (optional) - Sets the maximum number of items to process. Note this is not "process upto sequence number". If this is omitted it will process all entries, bringing the view up to date with the log.
+- `opts.chunkSize` (optional) - Sets the maximum number of items to process. If this is omitted it will process all entries, bringing the view up to date with the log.
 
-`cb` is optional. 
+`cb` is optional.
 
-If cb is provided the query will execute asynchronously on a libuv thread. Useful if you want to utilise multiple processors.
-If cb is not provided then processing will block this thread while executing. This is useful if you want to limit resource use of processing using something like `requestIdleCallback` like in the example.
+- If cb is provided the query will execute asynchronously on a libuv thread. Useful if you want to utilise multiple processors.
+- If cb is not provided then processing will block this thread while executing. This is useful if you want to limit resource use of processing using something like `requestIdleCallback` like in the example.
 
 ## Install
 
