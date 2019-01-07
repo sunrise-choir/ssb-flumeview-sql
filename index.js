@@ -2,55 +2,55 @@
 var Push = require('pull-pushable')
 var Obv = require('obv')
 
-var binding = require('./build/Release/binding.node')
+var SqlView = require('./build/Release/binding.node')
 
-module.exports = function SsbDb (path, since, cb) {
-  binding.init(path, function (err, db) {
-    if (err) return cb(err)
+module.exports = function SsbDb (logPath, dbPath) {
+  var db = new SqlView(logPath, dbPath)
 
-    var updated = Obv()
+  return db
 
-    // TODO: Things still to work out:
-    // - maybe db init shouldn't be async
-    // - query should work asap, even if there's indexing to do.
-    // - progress / status
-    // - ric + opts.chunkSize for background processing?
+  var updated = Obv()
 
-    // TODO: this still has a one to one coupling between appends to the log and view updates.
-    since(function (seq) {
-      db.update(seq, function (err) {
-        if (err) throw err
-        updated.set(seq)
-      })
+  // TODO: Things still to work out:
+  // - maybe db init shouldn't be async
+  // - query should work asap, even if there's indexing to do.
+  // - progress / status
+  // - ric + opts.chunkSize for background processing?
+
+  // TODO: this still has a one to one coupling between appends to the log and view updates.
+  since(function (seq) {
+    db.update(seq, function (err) {
+      if (err) throw err
+      updated.set(seq)
     })
+  })
 
-    function query (query, opts) {
-      opts = opts || {}
+  function query (query, opts) {
+    opts = opts || {}
 
-      if (typeof (query) !== 'string') {
-        throw new TypeError('Expected query to be a string')
-      }
-
-      var p = Push()
-
-      function pushResult (err, result) {
-        if (err) throw err // TODO: maybe don't throw here?
-        p.push(result)
-      }
-
-      if (opts.live) {
-        updated(function (seq) {
-          db.query(query, pushResult)
-        })
-      } else {
-        db.query(query, pushResult)
-      }
-
-      return p
+    if (typeof (query) !== 'string') {
+      throw new TypeError('Expected query to be a string')
     }
 
-    cb(null, {
-      query
-    })
+    var p = Push()
+
+    function pushResult (err, result) {
+      if (err) throw err // TODO: maybe don't throw here?
+      p.push(result)
+    }
+
+    if (opts.live) {
+      updated(function (seq) {
+        db.query(query, pushResult)
+      })
+    } else {
+      db.query(query, pushResult)
+    }
+
+    return p
+  }
+
+  cb(null, {
+    query
   })
 }

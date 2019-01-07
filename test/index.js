@@ -1,15 +1,15 @@
 var test = require('tape')
 var Db = require('../')
 
-test.skip('create', function (t) {
+test('create', function (t) {
   var db = Db('/tmp/test.offset', '/tmp/test.sqlite')
   t.ok(db)
   t.end()
 })
 
-test.skip('db has function getLatest ', function (t) {
+test('db has method getLatest ', function (t) {
   var db = Db('/tmp/test.offset', '/tmp/test.sqlite')
-  t.equal(typeof (db.getLatest), 'function')
+  t.equal(typeof (db.getLatest()), 'number')
   t.end()
 })
 
@@ -25,7 +25,7 @@ test.skip('db has function process ', function (t) {
   t.end()
 })
 
-test('create throws when paths are not strings', function (t) {
+test.skip('create throws when paths are not strings', function (t) {
   t.throws(function () {
     Db(null, '')
   })

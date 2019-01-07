@@ -68,7 +68,7 @@ dependencies = [
 ]
 [tasks.no-cross]
 script = [
-"cmake --Release .",
+"cmake -DCMAKE_BUILD_TYPE=Release .",
 "cargo build --release",
 "make",
 "mv libbinding.so ../build/Release/binding.node",
@@ -76,8 +76,8 @@ script = [
 
 [tasks.no-cross-debug]
 script = [
-"cmake --Debug .",
-"cargo build",
+"cmake -DCMAKE_BUILD_TYPE=Debug .",
+"cargo build --all",
 "make",
 "mv libbinding.so ../build/Release/binding.node",
 ]
