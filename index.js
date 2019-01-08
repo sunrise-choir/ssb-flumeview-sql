@@ -5,25 +5,30 @@ var Obv = require('obv')
 var SqlView = require('./build/Release/binding.node')
 
 module.exports = function SsbDb (logPath, dbPath) {
+  if (typeof (logPath) !== 'string') {
+    throw new TypeError('Expected logPath to be a string')
+  }
+  if (typeof (dbPath) !== 'string') {
+    throw new TypeError('Expected dbPath to be a string')
+  }
+
   var db = new SqlView(logPath, dbPath)
 
-  return db
+  var exports = {
+    process,
+    getLatest: () => db.getLatest()
+  }
 
-  var updated = Obv()
+  return exports
+
+  function process (opts) {
+    opts = opts || { chunkSize: -1 }
+    db.process(opts.chunkSize)
+  }
 
   // TODO: Things still to work out:
-  // - maybe db init shouldn't be async
   // - query should work asap, even if there's indexing to do.
   // - progress / status
-  // - ric + opts.chunkSize for background processing?
-
-  // TODO: this still has a one to one coupling between appends to the log and view updates.
-  since(function (seq) {
-    db.update(seq, function (err) {
-      if (err) throw err
-      updated.set(seq)
-    })
-  })
 
   function query (query, opts) {
     opts = opts || {}
@@ -49,8 +54,4 @@ module.exports = function SsbDb (logPath, dbPath) {
 
     return p
   }
-
-  cb(null, {
-    query
-  })
 }

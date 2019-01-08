@@ -19,28 +19,50 @@ use std::ptr::{null, null_mut};
 use std::slice;
 
 use flumedb::FlumeViewSql;
-use flumedb::OffsetLog;
 use flumedb::Sequence;
+use flumedb::{OffsetLog, OffsetLogIter};
 
 struct SsbQuery {
     view: FlumeViewSql,
-    log: OffsetLog<u32>,
+    log_path: String,
 }
 
 impl SsbQuery {
     fn new(log_path: String, view_path: String) -> SsbQuery {
         let view = FlumeViewSql::new(&view_path);
-        let log = OffsetLog::new(log_path);
 
-        SsbQuery { view, log }
+        SsbQuery { view, log_path }
     }
 
     fn get_latest(&self) -> Sequence {
-        self.view.latest
+        self.view.get_latest().unwrap()
     }
 
-    fn process(&mut self, num_items: usize) -> napi_value {
-        unimplemented!();
+    fn process(&mut self, num_items: i64) {
+        let latest = self.get_latest();
+
+        //If the latest is 0, we haven't got anything in the db. Don't skip the very first
+        //element in the offset log. I know this isn't super nice. It could be refactored later.
+        let num_to_skip = match latest {
+            0 => 0,
+            _ => 1
+        };
+        let log_path = self.log_path.clone();
+        let file = std::fs::File::open(log_path).unwrap();
+
+        let items_to_take = match num_items {
+            -1 => std::usize::MAX,
+            n @ _ => n as usize,
+        };
+
+        let buff: Vec<_> =
+            OffsetLogIter::<u32, std::fs::File>::with_starting_offset(file, latest)
+                .skip(num_to_skip)
+                .take(items_to_take)
+                .map(|data| (data.id + latest, data.data_buffer)) //TODO log_latest might not be the right thing
+                .collect();
+
+        self.view.append_batch(buff);
     }
 
     fn query(&self, query_string: String) -> napi_value {
@@ -51,19 +73,32 @@ impl SsbQuery {
 #[no_mangle]
 extern "C" fn get_latest(env: napi_env, info: napi_callback_info) -> napi_value {
     let this = get_this(env, info);
-    let mut result = null_mut(); 
+    let mut result = null_mut();
 
-    unsafe {napi_unwrap(env, this, &mut result)};
+    unsafe { napi_unwrap(env, this, &mut result) };
 
     let ssb_query = result as *mut SsbQuery;
-    let latest = unsafe{
-        (*ssb_query).get_latest()
-    };
+    let latest = unsafe { (*ssb_query).get_latest() };
 
     wrap_unsafe_create::<i64>(env, latest as i64, napi_create_int64)
-
 }
 
+#[no_mangle]
+extern "C" fn process(env: napi_env, info: napi_callback_info) -> napi_value {
+    let this = get_this(env, info);
+
+    let num_value = get_arg(env, info, 0);
+    let num = wrap_unsafe_get(env, num_value, napi_get_value_int64);
+
+    let mut result = null_mut();
+
+    unsafe { napi_unwrap(env, this, &mut result) };
+
+    let ssb_query = result as *mut SsbQuery;
+    unsafe { (*ssb_query).process(num) };
+
+    get_undefined_value(env)
+}
 #[no_mangle]
 pub extern "C" fn define_view_class(env: napi_env) -> napi_value {
     let latest_property: napi_property_descriptor = napi_property_descriptor {
@@ -73,10 +108,20 @@ pub extern "C" fn define_view_class(env: napi_env) -> napi_value {
         getter: None,
         setter: None,
         value: null_mut(),
-        attributes: napi_property_attributes_napi_default, 
-        data: null_mut()
+        attributes: napi_property_attributes_napi_default,
+        data: null_mut(),
     };
-    let properties = vec![latest_property];
+    let process_property: napi_property_descriptor = napi_property_descriptor {
+        utf8name: null(),
+        name: create_string_utf8(env, "process"),
+        method: Some(process),
+        getter: None,
+        setter: None,
+        value: null_mut(),
+        attributes: napi_property_attributes_napi_default,
+        data: null_mut(),
+    };
+    let properties = vec![latest_property, process_property];
     let data = null_mut();
 
     define_class(

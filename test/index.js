@@ -1,5 +1,6 @@
 var test = require('tape')
 var Db = require('../')
+var rimraf = require('rimraf')
 
 test('create', function (t) {
   var db = Db('/tmp/test.offset', '/tmp/test.sqlite')
@@ -13,41 +14,51 @@ test('db has method getLatest ', function (t) {
   t.end()
 })
 
-test.skip('db has function query ', function (t) {
+test.skip('db has method query ', function (t) {
   var db = Db('/tmp/test.offset', '/tmp/test.sqlite')
   t.equal(typeof (db.query), 'function')
   t.end()
 })
 
-test.skip('db has function process ', function (t) {
+test('db has method process ', function (t) {
   var db = Db('/tmp/test.offset', '/tmp/test.sqlite')
   t.equal(typeof (db.process), 'function')
   t.end()
 })
 
-test.skip('create throws when paths are not strings', function (t) {
+test('create throws when paths are not strings', function (t) {
   t.throws(function () {
-    Db(null, '')
+    Db(null, '', () => {})
   })
   t.throws(function () {
-    Db('', null)
+    Db('', null, () => {})
   })
   t.end()
 })
 
-test('indexing does not happen until triggered by a call to update', function (t) {
-  t.end()
-})
+test('indexing does not happen until triggered by a call to process', function (t) {
+  // TODO: these offset are specific to Piet's log. refactor test to use flume properly.
+  var offset = 5754
+  var offset2 = 12130
+  var offset3 = 18607
 
-test('update only indexes chunks of a given size', function (t) {
+  var logPath = '/tmp/test_indexing.sqlite'
+  rimraf.sync(logPath)
+  var db = Db('/home/piet/.ssb/flume/log.offset', logPath)
+
+  t.equals(db.getLatest(), 0)
+
+  db.process({ chunkSize: 10 })
+  t.ok(db.getLatest() === offset)
+  db.process({ chunkSize: 10 })
+  t.ok(db.getLatest() === offset2)
+  db.process({ chunkSize: 10 })
+  t.ok(db.getLatest() === offset3)
+
   t.end()
 })
 
 test('a simple query', function (t) {
-  t.end()
-})
-
-test('a live query only updates when since emits a new value, and only if that value is different to last', function (t) {
   t.end()
 })
 

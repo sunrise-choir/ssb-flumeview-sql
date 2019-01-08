@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "prebuild-install": "^5.2.1",
-    "pull-pushable": "^2.2.0"
+    "pull-pushable": "^2.2.0",
+    "rimraf": "^2.6.3"
   },
   "repository": {
     "type": "git",

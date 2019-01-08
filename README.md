@@ -76,7 +76,7 @@ function cb (err, results){
 
 ### sqlView.process(opts = {})
 
-`opts` is mandatory and has some required and optional fields:
+`opts` is mandatory and has one optional field:
 
 - `opts.chunkSize` (optional) - Sets the maximum number of items to process. If this is omitted it will process all entries, bringing the view up to date with the log.
 
@@ -102,6 +102,22 @@ Dev Dependencies:
 ```
 $ npm run prebuild
 ```
+
+### Todo
+
+- [ ] remove since from the api
+- [ ] documentation needs to have the table structure so you can know how to query. Think this means that that rust needs to live in that project.
+- [ ] write convenience methods that wrap common queries.
+- [ ] more tests for typechecking arguments
+- [ ] propogate file open errors up to the js
+- [ ] refactor structure of flume db. Pull out ssb specific stuff.
+- [ ] refactor prebuild stuff
+- [ ] wire up query and test
+- [ ] how to deal with needing to resolve a full message.
+  - One option is to use BufRead with `seekRelative`
+- [ ] lessbot
+  - [ ] make a test project that has the server and a client with ssb-client + flume follower
+
 
 ### Cross compile
 
