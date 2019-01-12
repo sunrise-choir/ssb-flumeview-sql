@@ -6,16 +6,35 @@ license = "AGPL3"
 
 [lib]
 name = "ssb_sql_napi"
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "lib"]
 
 [dependencies]
+log = "0.4.6"
 failure = "0.1.3"
 failure_derive = "0.1.3"
 serde = "1.0.80"
 serde_derive = "1.0.80"
+serde_json = "1.0.33"
+private-box = "0.4.4"
+base64 = "0.10.0"
+node_napi = { git = "https://github.com/sunrise-choir/node-napi" }
+flumedb = { git = "https://github.com/sunrise-choir/flumedb-rs" }
 
-[dependencies.node_napi] 
-path = "../../node-napi"
+[dependencies.rusqlite]
+version = "0.15.0"
+features = ["bundled", "serde_json", "load_extension"]
 
-[dependencies.flumedb] 
-path = "../../flumedb_rs"
+
+# [dependencies.node_napi] 
+# path = "../../node-napi"
+
+
+# [dependencies.flumedb] 
+# path = "../../flumedb_rs"
+
+[dev-dependencies]
+criterion = "0.2.5"
+
+[[bench]]
+name = "bench"
+harness = false

@@ -3,12 +3,21 @@ extern crate failure_derive;
 #[macro_use]
 extern crate failure;
 
+#[macro_use]
+extern crate log;
+
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
 
+extern crate rusqlite;
 extern crate flumedb;
 extern crate node_napi;
+extern crate private_box;
+extern crate base64;
+
+use failure::Error;
 
 use node_napi::napi::*;
 use node_napi::napi_sys::*;
@@ -18,9 +27,13 @@ use std::os::raw::{c_char, c_void};
 use std::ptr::{null, null_mut};
 use std::slice;
 
-use flumedb::FlumeViewSql;
 use flumedb::Sequence;
 use flumedb::{OffsetLog, OffsetLogIter};
+
+use private_box::SecretKey;
+
+pub mod flume_view_sql;
+pub use flume_view_sql::FlumeViewSql;
 
 struct SsbQuery {
     view: FlumeViewSql,
@@ -29,7 +42,8 @@ struct SsbQuery {
 
 impl SsbQuery {
     fn new(log_path: String, view_path: String) -> SsbQuery {
-        let view = FlumeViewSql::new(&view_path);
+        let keys = Vec::new();
+        let view = FlumeViewSql::new(&view_path, keys);
 
         SsbQuery { view, log_path }
     }
@@ -48,7 +62,7 @@ impl SsbQuery {
             _ => 1
         };
         let log_path = self.log_path.clone();
-        let file = std::fs::File::open(log_path).unwrap();
+        let file = std::fs::File::open(log_path.clone()).unwrap();
 
         let items_to_take = match num_items {
             -1 => std::usize::MAX,
@@ -65,19 +79,16 @@ impl SsbQuery {
         self.view.append_batch(buff);
     }
 
-    fn query(&self, query_string: String) -> napi_value {
-        unimplemented!();
-    }
 }
 
 #[no_mangle]
 extern "C" fn get_latest(env: napi_env, info: napi_callback_info) -> napi_value {
     let this = get_this(env, info);
-    let mut result = null_mut();
+    let mut ptr_ssb_query = null_mut();
 
-    unsafe { napi_unwrap(env, this, &mut result) };
+    unsafe { napi_unwrap(env, this, &mut ptr_ssb_query) };
 
-    let ssb_query = result as *mut SsbQuery;
+    let ssb_query = ptr_ssb_query as *mut SsbQuery;
     let latest = unsafe { (*ssb_query).get_latest() };
 
     wrap_unsafe_create::<i64>(env, latest as i64, napi_create_int64)
@@ -90,11 +101,11 @@ extern "C" fn process(env: napi_env, info: napi_callback_info) -> napi_value {
     let num_value = get_arg(env, info, 0);
     let num = wrap_unsafe_get(env, num_value, napi_get_value_int64);
 
-    let mut result = null_mut();
+    let mut ptr_ssb_query = null_mut();
 
-    unsafe { napi_unwrap(env, this, &mut result) };
+    unsafe { napi_unwrap(env, this, &mut ptr_ssb_query) };
 
-    let ssb_query = result as *mut SsbQuery;
+    let ssb_query = ptr_ssb_query as *mut SsbQuery;
     unsafe { (*ssb_query).process(num) };
 
     get_undefined_value(env)

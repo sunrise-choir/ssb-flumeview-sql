@@ -1,12 +1,19 @@
+
+mkdir -p ./build/libsodium/lib
+mkdir -p ./build/Release
+
+export SODIUM_STATIC=1 
+export SODIUM_INSTALL_DIR=$PWD/build/libsodium
+export SODIUM_LIB_DIR=$SODIUM_INSTALL_DIR/lib
+
 cd native
 
-mkdir -p ../build/Release
-cargo make no-cross
+# cargo make no-cross
 #cargo make no-cross-debug
-# cargo make cross \
-#   --env DOCKER_CROSS_IMAGE_NAME="linux-x64"\
-#   --env DOCKER_CROSS_TRIPLE="x86_64-unknown-linux-gnu"\
-#   --env CROSS_TRIPLE="x86_64-unknown-linux-gnu" && \
+cargo make cross \
+  --env DOCKER_CROSS_IMAGE_NAME="linux-x64"\
+  --env DOCKER_CROSS_TRIPLE="x86_64-unknown-linux-gnu"\
+  --env CROSS_TRIPLE="x86_64-unknown-linux-gnu"
 
 # cargo make cross \
 #   --env DOCKER_CROSS_IMAGE_NAME="linux-arm64"\

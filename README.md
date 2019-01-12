@@ -105,14 +105,16 @@ $ npm run prebuild
 
 ### Todo
 
-- [ ] remove since from the api
+- [x] remove since from the api
+- [ ] wire up query and test
+  - [ ] query is async. Or it needs to be if we want to be able to wait for a certain seq to be appended.
+- [ ] how to do the streaming api
 - [ ] documentation needs to have the table structure so you can know how to query. Think this means that that rust needs to live in that project.
 - [ ] write convenience methods that wrap common queries.
 - [ ] more tests for typechecking arguments
 - [ ] propogate file open errors up to the js
 - [ ] refactor structure of flume db. Pull out ssb specific stuff.
 - [ ] refactor prebuild stuff
-- [ ] wire up query and test
 - [ ] how to deal with needing to resolve a full message.
   - One option is to use BufRead with `seekRelative`
 - [ ] lessbot

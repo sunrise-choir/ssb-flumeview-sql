@@ -1,22 +1,32 @@
 'use strict'
-var Push = require('pull-pushable')
-var Obv = require('obv')
 
+var Knex = require('knex')
 var SqlView = require('./build/Release/binding.node')
 
-module.exports = function SsbDb (logPath, dbPath) {
+module.exports = function SsbDb (logPath, dbPath, since) {
   if (typeof (logPath) !== 'string') {
     throw new TypeError('Expected logPath to be a string')
   }
   if (typeof (dbPath) !== 'string') {
     throw new TypeError('Expected dbPath to be a string')
   }
+  if (typeof (since) !== 'function') {
+    throw new TypeError("Expected since observable to be a function. Normally this is the 'since' obeservable from flumedb.")
+  }
+
+  var knex = Knex({
+    client: 'sqlite3',
+    connection: {
+      filename: dbPath
+    }
+  })
 
   var db = new SqlView(logPath, dbPath)
 
   var exports = {
     process,
-    getLatest: () => db.getLatest()
+    getLatest: () => db.getLatest(),
+    knex
   }
 
   return exports
@@ -26,32 +36,37 @@ module.exports = function SsbDb (logPath, dbPath) {
     db.process(opts.chunkSize)
   }
 
-  // TODO: Things still to work out:
-  // - query should work asap, even if there's indexing to do.
-  // - progress / status
+  // queryBuilder: (knex) -> knexQuery
 
-  function query (query, opts) {
-    opts = opts || {}
-
+  function query ({ query, whenUpToSequence }, cb) {
     if (typeof (query) !== 'string') {
       throw new TypeError('Expected query to be a string')
     }
-
-    var p = Push()
-
-    function pushResult (err, result) {
-      if (err) throw err // TODO: maybe don't throw here?
-      p.push(result)
+    if (typeof (cb) !== 'function') {
+      throw new TypeError('Expected cb to be a function')
     }
 
-    if (opts.live) {
-      updated(function (seq) {
-        db.query(query, pushResult)
+    function doQuery () {
+      db.query(query, function (err, result) {
+        // db.query returns a string of json data. We need to parse it.
+        cb(err, JSON.parse(result))
+      })
+    }
+
+    if (whenUpToSequence) {
+      var remove
+
+      remove = since(function (latest) {
+        if (latest >= whenUpToSequence) {
+          // unsubscribe from the obv.
+          remove()
+
+          // do the query
+          doQuery()
+        }
       })
     } else {
-      db.query(query, pushResult)
+      doQuery()
     }
-
-    return p
   }
 }
