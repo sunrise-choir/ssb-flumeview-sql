@@ -36,7 +36,7 @@ script = [
 ]
 
 [tasks.mv_native_lib]
-script = ["cp target/${CROSS_TRIPLE}/release/libssb_sql_napi.a target/release"]
+script = ["cp target/${CROSS_TRIPLE}/release/libssb_sql_napi.* target/release"]
 
 [tasks.configure_napi_binding]
 script = [
@@ -55,12 +55,6 @@ dependencies = ["configure_napi_binding"]
 command = "mv"
 args = ["libbinding.so", "binding.node"]
 dependencies = ["build_napi_binding"]
-
-[tasks.my-flow]
-dependencies = [
-		"build_native",
-		"mv_napi_binding"
-]
 
 [tasks.sodium_clone]
 script = [
@@ -104,6 +98,7 @@ script = [
 [tasks.cross]
 dependencies = [
 		"build_native",
+		"mv_native_lib",
     "sodium_make_install",
 		"make"
 ]

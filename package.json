@@ -31,6 +31,7 @@
   "devDependencies": {
     "prebuild": "pietgeursen/prebuild",
     "pull-stream": "^3.6.1",
+    "ssb-keys": "^7.1.4",
     "tape": "^4.8.0"
   }
 }

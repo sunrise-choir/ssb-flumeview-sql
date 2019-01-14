@@ -24,7 +24,7 @@ endif (UNIX)
 
 if (WIN32)
 target_link_libraries(${PROJECT_NAME}
-  debug "${CMAKE_SOURCE_DIR}/target/debug/ssb_sql_napi.lib"
-  optimized "${CMAKE_SOURCE_DIR}/target/release/ssb_sql_napi.lib"
+  debug "${CMAKE_SOURCE_DIR}/target/debug/libssb_sql_napi.lib"
+  optimized "${CMAKE_SOURCE_DIR}/target/release/libssb_sql_napi.lib"
 )
 endif (WIN32)

@@ -41,8 +41,7 @@ struct SsbQuery {
 }
 
 impl SsbQuery {
-    fn new(log_path: String, view_path: String) -> SsbQuery {
-        let keys = Vec::new();
+    fn new(log_path: String, view_path: String, keys: Vec<SecretKey>) -> SsbQuery {
         let view = FlumeViewSql::new(&view_path, keys);
 
         SsbQuery { view, log_path }
@@ -156,6 +155,13 @@ pub extern "C" fn construct_view_class(env: napi_env, info: napi_callback_info) 
 
     let path_to_offset_value = get_arg(env, info, 0);
     let path_to_db_value = get_arg(env, info, 1);
+    let secret_key_value = get_arg(env, info, 2);
+
+    let raw_parts = get_buffer_info(env, secret_key_value);
+
+    let secret_key_bytes = unsafe { slice::from_raw_parts(raw_parts.0, raw_parts.1)};
+    let secret_key = SecretKey::from_slice(secret_key_bytes).unwrap();
+    let keys = vec![secret_key];
 
     let path_to_offset = get_string(env, path_to_offset_value).unwrap();
     let path_to_db = get_string(env, path_to_db_value).unwrap();
@@ -163,7 +169,7 @@ pub extern "C" fn construct_view_class(env: napi_env, info: napi_callback_info) 
     let mut wrapped_ref: napi_ref = null_mut();
     let finalize_hint: *mut c_void = null_mut();
 
-    let ssb_query = Box::new(SsbQuery::new(path_to_offset, path_to_db));
+    let ssb_query = Box::new(SsbQuery::new(path_to_offset, path_to_db, keys));
 
     let status = unsafe {
         napi_wrap(

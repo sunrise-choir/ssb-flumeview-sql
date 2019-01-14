@@ -2,6 +2,9 @@ var test = require('tape')
 var Obv = require('obv')
 var Db = require('../')
 var rimraf = require('rimraf')
+var SsbKeys = require('ssb-keys')
+
+var keys = SsbKeys.loadOrCreate('~/.ssb/secret')
 
 test('create', function (t) {
   var since = Obv()

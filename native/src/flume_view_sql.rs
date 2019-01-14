@@ -266,6 +266,7 @@ fn append_item(connection: &Connection, keys: &[SecretKey], seq: Sequence, item:
 
             let bytes = decode(strrr).unwrap();
 
+
             message.value.content = 
                 keys.get(0)
                 .ok_or(())
