@@ -33,6 +33,18 @@ fn find_or_create_author(conn: &Connection, author: &str) -> Result<i64, Error> 
         .map_err(|err| err.into())
 }
 
+fn find_or_create_key(conn: &Connection, key: &str) -> Result<i64, Error> {
+    let mut stmt = conn.prepare_cached("SELECT id FROM keys WHERE key=?1")?;
+
+    stmt.query_row(&[key], |row| row.get(0))
+        .or_else(|_| {
+            conn.prepare_cached("INSERT INTO keys (key) VALUES (?)")
+                .map(|mut stmt| stmt.execute(&[key]))
+                .map(|_| conn.last_insert_rowid())
+        })
+        .map_err(|err| err.into())
+}
+
 #[derive(Debug, Fail)]
 pub enum FlumeViewSqlError {
     #[fail(display = "Db failed integrity check")]
@@ -50,7 +62,7 @@ fn create_author_index(conn: &Connection) -> Result<usize, Error> {
 
 fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating links index");
-    conn.execute("CREATE INDEX links_to_index on links (link_to)", NO_PARAMS)
+    conn.execute("CREATE INDEX links_to_id_index on links (link_to_id)", NO_PARAMS)
         .map_err(|err| err.into())
 }
 
@@ -67,12 +79,12 @@ fn create_tables(conn: &mut Connection) {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS messages (
           flume_seq INTEGER PRIMARY KEY,
-          key TEXT UNIQUE, 
+          key_id INTEGER, 
           seq INTEGER,
           received_time REAL,
           asserted_time REAL,
-          root TEXT,
-          fork TEXT,
+          root_id INTEGER,
+          fork_id INTEGER,
           author_id INTEGER,
           content_type TEXT,
           content JSON,
@@ -92,10 +104,19 @@ fn create_tables(conn: &mut Connection) {
     .unwrap();
 
     conn.execute(
+        "CREATE TABLE IF NOT EXISTS keys (
+          id INTEGER PRIMARY KEY,
+          key TEXT UNIQUE
+        )",
+        NO_PARAMS,
+    )
+    .unwrap();
+
+    conn.execute(
         "CREATE TABLE IF NOT EXISTS links (
           id INTEGER PRIMARY KEY,
-          link_from TEXT,
-          link_to TEXT
+          link_from_id INTEGER,
+          link_to_id INTEGER
         )",
         NO_PARAMS,
     )
@@ -129,7 +150,7 @@ impl FlumeViewSql {
     pub fn get_seq_by_key(&mut self, key: String) -> Result<i64, Error> {
         let mut stmt = self
             .connection
-            .prepare("SELECT flume_seq FROM messages WHERE key=?1")?;
+            .prepare("SELECT messages.flume_seq FROM messages JOIN keys ON messages.key_id=keys.id WHERE keys.key=?1")?;
 
         stmt.query_row(&[key], |row| row.get(0))
             .map_err(|err| err.into())
@@ -226,10 +247,10 @@ fn append_item(
     item: &[u8],
 ) -> Result<(), Error> {
     let signed_seq = seq as i64;
-    let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages (flume_seq, key, seq, received_time, asserted_time, root, fork, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap();
+    let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages (flume_seq, key_id, seq, received_time, asserted_time, root_id, fork_id, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap();
 
     let mut insert_link_stmt = connection
-        .prepare_cached("INSERT INTO links (link_from, link_to) VALUES (?, ?)")
+        .prepare_cached("INSERT INTO links (link_from_id, link_to_id) VALUES (?, ?)")
         .unwrap();
 
     let mut message: SsbMessage = serde_json::from_slice(item).unwrap();
@@ -257,15 +278,34 @@ fn append_item(
         _ => message,
     };
 
+    let message_key_id = find_or_create_key(&connection, &message.key).unwrap();
+    let root_key_id =  match message.value.content["root"] {
+        Value::String(ref key) => {
+            let id = find_or_create_key(&connection, &key).unwrap();
+            Some(id)
+        }
+        _ => None
+    };
+
+    let fork_key_id =  match message.value.content["fork"] {
+        Value::String(ref key) => {
+            let id = find_or_create_key(&connection, &key).unwrap();
+            Some(id)
+        }
+        _ => None
+    };
+        
     let mut links = Vec::new();
     find_values_in_object_by_key(&message.value.content, "link", &mut links);
 
     links
         .iter()
         .filter(|link| link.is_string())
-        .for_each(|link| {
+        .map(|link| link.as_str().unwrap())
+        .map(|link| find_or_create_key(&connection, link).unwrap())
+        .for_each(|link_id| {
             insert_link_stmt
-                .execute(&[&signed_seq as &ToSql, &message.key, &link.as_str().unwrap()])
+                .execute(&[&message_key_id, &link_id])
                 .unwrap();
         });
 
@@ -273,12 +313,12 @@ fn append_item(
     insert_msg_stmt
         .execute(&[
             &signed_seq as &ToSql,
-            &message.key,
+            &message_key_id,
             &message.value.sequence,
             &message.timestamp,
             &message.value.timestamp,
-            &message.value.content["root"] as &ToSql,
-            &message.value.content["fork"] as &ToSql,
+            &root_key_id as &ToSql,
+            &fork_key_id as &ToSql,
             &author_id,
             &message.value.content["type"].as_str() as &ToSql,
             &message.value.content as &ToSql,
