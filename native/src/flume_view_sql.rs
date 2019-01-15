@@ -1,11 +1,11 @@
 use failure::Error;
 use flumedb::flume_view::*;
 
+use base64::decode;
 use rusqlite::types::ToSql;
 use rusqlite::OpenFlags;
 use rusqlite::{Connection, NO_PARAMS};
 use serde_json::Value;
-use base64::decode;
 
 use private_box::SecretKey;
 
@@ -13,7 +13,7 @@ use log;
 
 pub struct FlumeViewSql {
     connection: Connection,
-    keys: Vec<SecretKey> 
+    keys: Vec<SecretKey>,
 }
 
 fn set_pragmas(conn: &mut Connection) {
@@ -22,11 +22,11 @@ fn set_pragmas(conn: &mut Connection) {
 }
 
 fn find_or_create_author(conn: &Connection, author: &str) -> Result<i64, Error> {
-    let mut stmt = conn.prepare_cached("SELECT id FROM author_id WHERE author=?1")?;
+    let mut stmt = conn.prepare_cached("SELECT id FROM authors WHERE author=?1")?;
 
     stmt.query_row(&[author], |row| row.get(0))
         .or_else(|_| {
-            conn.prepare_cached("INSERT INTO author_id (author) VALUES (?)")
+            conn.prepare_cached("INSERT INTO authors (author) VALUES (?)")
                 .map(|mut stmt| stmt.execute(&[author]))
                 .map(|_| conn.last_insert_rowid())
         })
@@ -38,8 +38,6 @@ pub enum FlumeViewSqlError {
     #[fail(display = "Db failed integrity check")]
     DbFailedIntegrityCheck {},
 }
-
-
 
 fn create_author_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating author index");
@@ -65,30 +63,27 @@ fn create_content_type_index(conn: &Connection) -> Result<usize, Error> {
     .map_err(|err| err.into())
 }
 
-
-
 fn create_tables(conn: &mut Connection) {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS messages (
-          id INTEGER PRIMARY KEY,
+          flume_seq INTEGER PRIMARY KEY,
           key TEXT UNIQUE, 
           seq INTEGER,
-          received_time TEXT,
-          asserted_time TEXT,
+          received_time REAL,
+          asserted_time REAL,
           root TEXT,
-          branch TEXT,
           fork TEXT,
           author_id INTEGER,
           content_type TEXT,
           content JSON,
-          is_decrypted INTEGER
+          is_decrypted BOOLEAN
         )",
         NO_PARAMS,
     )
     .unwrap();
 
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS author_id (
+        "CREATE TABLE IF NOT EXISTS authors (
           id INTEGER PRIMARY KEY,
           author TEXT UNIQUE
         )",
@@ -99,20 +94,8 @@ fn create_tables(conn: &mut Connection) {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS links (
           id INTEGER PRIMARY KEY,
-          flume_seq INTEGER,
           link_from TEXT,
           link_to TEXT
-        )",
-        NO_PARAMS,
-    )
-    .unwrap();
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS heads (
-          id INTEGER PRIMARY KEY,
-          flume_seq INTEGER,
-          links_from INTEGER,
-          links_to INTEGER
         )",
         NO_PARAMS,
     )
@@ -121,18 +104,11 @@ fn create_tables(conn: &mut Connection) {
 
 fn create_indices(connection: &Connection) {
     create_author_index(&connection)
-        .and_then(|_|{
-            create_links_to_index(&connection)
-        })
-        .and_then(|_|{
-            create_content_type_index(&connection)
-        })
+        .and_then(|_| create_links_to_index(&connection))
+        .and_then(|_| create_content_type_index(&connection))
         .map(|_| ())
-        .unwrap_or_else(|_|());
-
+        .unwrap_or_else(|_| ());
 }
-
-
 
 impl FlumeViewSql {
     pub fn new(path: &str, keys: Vec<SecretKey>) -> FlumeViewSql {
@@ -153,7 +129,7 @@ impl FlumeViewSql {
     pub fn get_seq_by_key(&mut self, key: String) -> Result<i64, Error> {
         let mut stmt = self
             .connection
-            .prepare("SELECT id FROM messages WHERE key=?1")?;
+            .prepare("SELECT flume_seq FROM messages WHERE key=?1")?;
 
         stmt.query_row(&[key], |row| row.get(0))
             .map_err(|err| err.into())
@@ -162,7 +138,7 @@ impl FlumeViewSql {
     pub fn get_seqs_by_type(&mut self, content_type: String) -> Result<Vec<i64>, Error> {
         let mut stmt = self
             .connection
-            .prepare("SELECT id FROM messages WHERE content_type=?1")?;
+            .prepare("SELECT flume_seq FROM messages WHERE content_type=?1")?;
 
         let rows = stmt.query_map(&[content_type], |row| row.get(0))?;
 
@@ -183,32 +159,31 @@ impl FlumeViewSql {
         }
 
         tx.commit().unwrap();
-
     }
 
     pub fn check_db_integrity(&mut self) -> Result<(), Error> {
-        self.connection.query_row_and_then("PRAGMA integrity_check", NO_PARAMS, |row| {
-            row.get_checked(0)
-                .map_err(|err| err.into())
-                .and_then(|res: String| {
-                    if res == "ok" {
-                        return Ok(());
-                    }
-                    return Err(FlumeViewSqlError::DbFailedIntegrityCheck {}.into());
-                })
-        })
+        self.connection
+            .query_row_and_then("PRAGMA integrity_check", NO_PARAMS, |row| {
+                row.get_checked(0)
+                    .map_err(|err| err.into())
+                    .and_then(|res: String| {
+                        if res == "ok" {
+                            return Ok(());
+                        }
+                        return Err(FlumeViewSqlError::DbFailedIntegrityCheck {}.into());
+                    })
+            })
     }
 
     pub fn get_latest(&self) -> Result<Sequence, Error> {
         info!("Getting latest seq from db");
 
-        let mut stmt = self.connection
-            .prepare_cached("SELECT MAX(id) FROM messages")?;
+        let mut stmt = self
+            .connection
+            .prepare_cached("SELECT MAX(flume_seq) FROM messages")?;
 
         stmt.query_row(NO_PARAMS, |row| {
-            let res: i64 = row
-                .get_checked(0)
-                .unwrap_or(0);
+            let res: i64 = row.get_checked(0).unwrap_or(0);
             res as Sequence
         })
         .map_err(|err| err.into())
@@ -230,7 +205,6 @@ fn find_values_in_object_by_key(
             for val in arr {
                 find_values_in_object_by_key(val, key, values);
             }
-        
         }
         Value::Object(kv) => {
             for val in kv.values() {
@@ -245,12 +219,17 @@ fn find_values_in_object_by_key(
     }
 }
 
-fn append_item(connection: &Connection, keys: &[SecretKey], seq: Sequence, item: &[u8]) -> Result<(), Error> {
+fn append_item(
+    connection: &Connection,
+    keys: &[SecretKey],
+    seq: Sequence,
+    item: &[u8],
+) -> Result<(), Error> {
     let signed_seq = seq as i64;
-    let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages (id, key, seq, received_time, asserted_time, root, branch, fork, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap();
+    let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages (flume_seq, key, seq, received_time, asserted_time, root, fork, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap();
 
     let mut insert_link_stmt = connection
-        .prepare_cached("INSERT INTO links (flume_seq, link_from, link_to) VALUES (?, ?, ?)")
+        .prepare_cached("INSERT INTO links (link_from, link_to) VALUES (?, ?)")
         .unwrap();
 
     let mut message: SsbMessage = serde_json::from_slice(item).unwrap();
@@ -259,30 +238,23 @@ fn append_item(connection: &Connection, keys: &[SecretKey], seq: Sequence, item:
     message = match message.value.content["type"] {
         Value::Null => {
             let content = message.value.content.clone();
-            let strrr = &content
-                .as_str()
-                .unwrap()
-                .trim_end_matches(".box");
+            let strrr = &content.as_str().unwrap().trim_end_matches(".box");
 
             let bytes = decode(strrr).unwrap();
 
-
-            message.value.content = 
-                keys.get(0)
+            message.value.content = keys
+                .get(0)
                 .ok_or(())
-                .and_then(|key|{
-                    private_box::decrypt(&bytes, key)
-                })
-                .and_then(|data|{
+                .and_then(|key| private_box::decrypt(&bytes, key))
+                .and_then(|data| {
                     is_decrypted = true;
-                    serde_json::from_slice(&data)
-                        .map_err(|_| ())
+                    serde_json::from_slice(&data).map_err(|_| ())
                 })
                 .unwrap_or(Value::Null); //If we can't decrypt it, throw it away.
 
             message
-        },
-        _ => message
+        }
+        _ => message,
     };
 
     let mut links = Vec::new();
@@ -293,11 +265,7 @@ fn append_item(connection: &Connection, keys: &[SecretKey], seq: Sequence, item:
         .filter(|link| link.is_string())
         .for_each(|link| {
             insert_link_stmt
-                .execute(&[
-                         &signed_seq as &ToSql,
-                         &message.key, 
-                         &link.as_str().unwrap(),
-                ])
+                .execute(&[&signed_seq as &ToSql, &message.key, &link.as_str().unwrap()])
                 .unwrap();
         });
 
@@ -310,12 +278,11 @@ fn append_item(connection: &Connection, keys: &[SecretKey], seq: Sequence, item:
             &message.timestamp,
             &message.value.timestamp,
             &message.value.content["root"] as &ToSql,
-            &message.value.content["branch"] as &ToSql,
             &message.value.content["fork"] as &ToSql,
             &author_id,
             &message.value.content["type"].as_str() as &ToSql,
             &message.value.content as &ToSql,
-            &is_decrypted as &ToSql
+            &is_decrypted as &ToSql,
         ])
         .unwrap();
 
@@ -348,8 +315,8 @@ struct SsbMessage {
 
 #[cfg(test)]
 mod test {
-    use flumedb::flume_view::*;
     use flume_view_sql::*;
+    use flumedb::flume_view::*;
     use serde_json::*;
 
     #[test]
@@ -447,8 +414,7 @@ mod test {
 
         match view.check_db_integrity() {
             Ok(_) => panic!(),
-            Err(_) => assert!(true)
+            Err(_) => assert!(true),
         }
     }
 }
-

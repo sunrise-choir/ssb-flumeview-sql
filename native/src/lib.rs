@@ -11,11 +11,11 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-extern crate rusqlite;
+extern crate base64;
 extern crate flumedb;
 extern crate node_napi;
 extern crate private_box;
-extern crate base64;
+extern crate rusqlite;
 
 use failure::Error;
 
@@ -58,7 +58,7 @@ impl SsbQuery {
         //element in the offset log. I know this isn't super nice. It could be refactored later.
         let num_to_skip = match latest {
             0 => 0,
-            _ => 1
+            _ => 1,
         };
         let log_path = self.log_path.clone();
         let file = std::fs::File::open(log_path.clone()).unwrap();
@@ -68,16 +68,14 @@ impl SsbQuery {
             n @ _ => n as usize,
         };
 
-        let buff: Vec<_> =
-            OffsetLogIter::<u32, std::fs::File>::with_starting_offset(file, latest)
-                .skip(num_to_skip)
-                .take(items_to_take)
-                .map(|data| (data.id + latest, data.data_buffer)) //TODO log_latest might not be the right thing
-                .collect();
+        let buff: Vec<_> = OffsetLogIter::<u32, std::fs::File>::with_starting_offset(file, latest)
+            .skip(num_to_skip)
+            .take(items_to_take)
+            .map(|data| (data.id + latest, data.data_buffer)) //TODO log_latest might not be the right thing
+            .collect();
 
         self.view.append_batch(buff);
     }
-
 }
 
 #[no_mangle]
@@ -159,7 +157,7 @@ pub extern "C" fn construct_view_class(env: napi_env, info: napi_callback_info) 
 
     let raw_parts = get_buffer_info(env, secret_key_value);
 
-    let secret_key_bytes = unsafe { slice::from_raw_parts(raw_parts.0, raw_parts.1)};
+    let secret_key_bytes = unsafe { slice::from_raw_parts(raw_parts.0, raw_parts.1) };
     let secret_key = SecretKey::from_slice(secret_key_bytes).unwrap();
     let keys = vec![secret_key];
 

@@ -1,19 +1,18 @@
-
 #[macro_use]
 extern crate criterion;
 use criterion::Criterion;
 
-extern crate ssb_sql_napi;
+extern crate base64;
 extern crate flumedb;
 extern crate private_box;
-extern crate base64;
+extern crate ssb_sql_napi;
 
+use base64::{decode, encode};
 use flumedb::flume_log::FlumeLog;
 use flumedb::offset_log::OffsetCodec;
 use flumedb::offset_log::OffsetLogIter;
-use ssb_sql_napi::FlumeViewSql;
 use private_box::SecretKey;
-use base64::{decode, encode};
+use ssb_sql_napi::FlumeViewSql;
 
 const NUM_ENTRIES: u32 = 10000;
 
@@ -40,31 +39,31 @@ fn flume_view_sql_insert_piets_entire_log_with_decryption(c: &mut Criterion) {
     let offset_filename = "/home/piet/.ssb/flume/log.offset";
     let db_filename = "/tmp/test_private.sqlite3";
     let secret_str = std::env::vars()
-        .find(|(key, _)|{
-            key == "SSB_SECRET"
-        })
+        .find(|(key, _)| key == "SSB_SECRET")
         .map(|(_, val)| val)
         .unwrap();
 
     let secret_bytes = decode(&secret_str).unwrap();
 
-    c.bench_function("flume view sql insert piets entire log with decryptions", move |b| {
-        b.iter(|| {
-            let key = SecretKey::from_slice(&secret_bytes).unwrap();
-            let keys = vec![key];
-            std::fs::remove_file(db_filename.clone()).unwrap_or(());
-            let mut view = FlumeViewSql::new(db_filename, keys);
+    c.bench_function(
+        "flume view sql insert piets entire log with decryptions",
+        move |b| {
+            b.iter(|| {
+                let key = SecretKey::from_slice(&secret_bytes).unwrap();
+                let keys = vec![key];
+                std::fs::remove_file(db_filename.clone()).unwrap_or(());
+                let mut view = FlumeViewSql::new(db_filename, keys);
 
-            let file = std::fs::File::open(offset_filename.to_string()).unwrap();
-            let buff: Vec<_> = OffsetLogIter::<u32, std::fs::File>::new(file)
-                .map(|data| (data.id, data.data_buffer))
-                .collect();
+                let file = std::fs::File::open(offset_filename.to_string()).unwrap();
+                let buff: Vec<_> = OffsetLogIter::<u32, std::fs::File>::new(file)
+                    .map(|data| (data.id, data.data_buffer))
+                    .collect();
 
-            view.append_batch(buff);
-        })
-    });
+                view.append_batch(buff);
+            })
+        },
+    );
 }
-
 
 fn flume_view_sql_insert(c: &mut Criterion) {
     let offset_filename = "/home/piet/.ssb/flume/log.offset";
@@ -90,7 +89,7 @@ fn flume_view_sql_insert(c: &mut Criterion) {
     });
 }
 
-criterion_group!{
+criterion_group! {
     name = sql;
     config = Criterion::default().sample_size(2);
     targets = flume_view_sql_insert_piets_entire_log_with_decryption, flume_view_sql_insert, flume_view_sql_insert_piets_entire_log
