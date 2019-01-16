@@ -60,6 +60,15 @@ fn create_author_index(conn: &Connection) -> Result<usize, Error> {
     .map_err(|err| err.into())
 }
 
+fn create_root_index(conn: &Connection) -> Result<usize, Error> {
+    info!("Creating root index");
+    conn.execute(
+        "CREATE INDEX root_id_index on messages (root_id)",
+        NO_PARAMS,
+    )
+    .map_err(|err| err.into())
+}
+
 fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating links index");
     conn.execute("CREATE INDEX links_to_id_index on links (link_to_id)", NO_PARAMS)
@@ -127,6 +136,7 @@ fn create_indices(connection: &Connection) {
     create_author_index(&connection)
         .and_then(|_| create_links_to_index(&connection))
         .and_then(|_| create_content_type_index(&connection))
+        .and_then(|_| create_root_index(&connection))
         .map(|_| ())
         .unwrap_or_else(|_| ());
 }
