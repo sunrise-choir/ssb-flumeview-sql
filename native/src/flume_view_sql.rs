@@ -34,12 +34,12 @@ pub enum FlumeViewSqlError {
 
 pub struct FlumeViewSql {
     connection: Connection,
-    keys: Vec<SecretKey>,
+    secret_keys: Vec<SecretKey>,
 }
 
 impl FlumeView for FlumeViewSql {
     fn append(&mut self, seq: Sequence, item: &[u8]) {
-        append_item(&self.connection, &self.keys, seq, item).unwrap()
+        append_item(&self.connection, &self.secret_keys, seq, item).unwrap()
     }
     fn latest(&self) -> Sequence {
         self.get_latest().unwrap()
@@ -47,7 +47,7 @@ impl FlumeView for FlumeViewSql {
 }
 
 impl FlumeViewSql {
-    pub fn new(path: &str, keys: Vec<SecretKey>) -> FlumeViewSql {
+    pub fn new(path: &str, secret_keys: Vec<SecretKey>) -> FlumeViewSql {
         //let mut connection = Connection::open(path).expect("unable to open sqlite connection");
         let flags: OpenFlags = OpenFlags::SQLITE_OPEN_READ_WRITE
             | OpenFlags::SQLITE_OPEN_CREATE
@@ -59,7 +59,10 @@ impl FlumeViewSql {
         create_tables(&mut connection);
         create_indices(&connection);
 
-        FlumeViewSql { connection, keys }
+        FlumeViewSql {
+            connection,
+            secret_keys,
+        }
     }
 
     pub fn get_seq_by_key(&mut self, key: String) -> Result<i64, Error> {
@@ -91,7 +94,7 @@ impl FlumeViewSql {
         let tx = self.connection.transaction().unwrap();
 
         for item in items {
-            append_item(&tx, &self.keys, item.0, &item.1).unwrap();
+            append_item(&tx, &self.secret_keys, item.0, &item.1).unwrap();
         }
 
         tx.commit().unwrap();
@@ -155,20 +158,7 @@ fn find_values_in_object_by_key(
     }
 }
 
-fn append_item(
-    connection: &Connection,
-    keys: &[SecretKey],
-    seq: Sequence,
-    item: &[u8],
-) -> Result<(), Error> {
-    let signed_seq = seq as i64;
-    let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages (flume_seq, key_id, seq, received_time, asserted_time, root_id, fork_id, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap();
-
-    let mut insert_link_stmt = connection
-        .prepare_cached("INSERT INTO links (link_from_id, link_to_id) VALUES (?, ?)")
-        .unwrap();
-
-    let mut message: SsbMessage = serde_json::from_slice(item).unwrap();
+fn attempt_decryption(mut message: SsbMessage, secret_keys: &[SecretKey]) -> (bool, SsbMessage) {
     let mut is_decrypted = false;
 
     message = match message.value.content["type"] {
@@ -178,7 +168,7 @@ fn append_item(
 
             let bytes = decode(strrr).unwrap();
 
-            message.value.content = keys
+            message.value.content = secret_keys
                 .get(0)
                 .ok_or(())
                 .and_then(|key| private_box::decrypt(&bytes, key))
@@ -193,23 +183,43 @@ fn append_item(
         _ => message,
     };
 
+    (is_decrypted, message)
+}
+
+fn append_item(
+    connection: &Connection,
+    secret_keys: &[SecretKey],
+    seq: Sequence,
+    item: &[u8],
+) -> Result<(), Error> {
+    let signed_seq = seq as i64;
+    let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages (flume_seq, key_id, seq, received_time, asserted_time, root_id, fork_id, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap();
+
+    let mut insert_link_stmt = connection
+        .prepare_cached("INSERT INTO links (link_from_id, link_to_id) VALUES (?, ?)")
+        .unwrap();
+
+    let message: SsbMessage = serde_json::from_slice(item).unwrap();
+
+    let (is_decrypted, message) = attempt_decryption(message, secret_keys);
+
     let message_key_id = find_or_create_key(&connection, &message.key).unwrap();
-    let root_key_id =  match message.value.content["root"] {
+    let root_key_id = match message.value.content["root"] {
         Value::String(ref key) => {
             let id = find_or_create_key(&connection, &key).unwrap();
             Some(id)
         }
-        _ => None
+        _ => None,
     };
 
-    let fork_key_id =  match message.value.content["fork"] {
+    let fork_key_id = match message.value.content["fork"] {
         Value::String(ref key) => {
             let id = find_or_create_key(&connection, &key).unwrap();
             Some(id)
         }
-        _ => None
+        _ => None,
     };
-        
+
     let mut links = Vec::new();
     find_values_in_object_by_key(&message.value.content, "link", &mut links);
 
@@ -273,7 +283,6 @@ fn find_or_create_key(conn: &Connection, key: &str) -> Result<i64, Error> {
         .map_err(|err| err.into())
 }
 
-
 fn create_author_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating author index");
     conn.execute(
@@ -294,8 +303,11 @@ fn create_root_index(conn: &Connection) -> Result<usize, Error> {
 
 fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating links index");
-    conn.execute("CREATE INDEX links_to_id_index on links (link_to_id)", NO_PARAMS)
-        .map_err(|err| err.into())
+    conn.execute(
+        "CREATE INDEX links_to_id_index on links (link_to_id)",
+        NO_PARAMS,
+    )
+    .map_err(|err| err.into())
 }
 
 fn create_content_type_index(conn: &Connection) -> Result<usize, Error> {
@@ -363,7 +375,6 @@ fn create_indices(connection: &Connection) {
         .map(|_| ())
         .unwrap_or_else(|_| ());
 }
-
 
 #[cfg(test)]
 mod test {
