@@ -11,38 +11,19 @@ use private_box::SecretKey;
 
 use log;
 
-pub struct FlumeViewSql {
-    connection: Connection,
-    keys: Vec<SecretKey>,
+#[derive(Serialize, Deserialize, Debug)]
+struct SsbValue {
+    author: String,
+    sequence: u32,
+    timestamp: f64,
+    content: Value,
 }
 
-fn set_pragmas(conn: &mut Connection) {
-    conn.execute("PRAGMA synchronous = OFF", NO_PARAMS).unwrap();
-    conn.execute("PRAGMA page_size = 8192", NO_PARAMS).unwrap();
-}
-
-fn find_or_create_author(conn: &Connection, author: &str) -> Result<i64, Error> {
-    let mut stmt = conn.prepare_cached("SELECT id FROM authors WHERE author=?1")?;
-
-    stmt.query_row(&[author], |row| row.get(0))
-        .or_else(|_| {
-            conn.prepare_cached("INSERT INTO authors (author) VALUES (?)")
-                .map(|mut stmt| stmt.execute(&[author]))
-                .map(|_| conn.last_insert_rowid())
-        })
-        .map_err(|err| err.into())
-}
-
-fn find_or_create_key(conn: &Connection, key: &str) -> Result<i64, Error> {
-    let mut stmt = conn.prepare_cached("SELECT id FROM keys WHERE key=?1")?;
-
-    stmt.query_row(&[key], |row| row.get(0))
-        .or_else(|_| {
-            conn.prepare_cached("INSERT INTO keys (key) VALUES (?)")
-                .map(|mut stmt| stmt.execute(&[key]))
-                .map(|_| conn.last_insert_rowid())
-        })
-        .map_err(|err| err.into())
+#[derive(Serialize, Deserialize, Debug)]
+struct SsbMessage {
+    key: String,
+    value: SsbValue,
+    timestamp: f64,
 }
 
 #[derive(Debug, Fail)]
@@ -51,94 +32,18 @@ pub enum FlumeViewSqlError {
     DbFailedIntegrityCheck {},
 }
 
-fn create_author_index(conn: &Connection) -> Result<usize, Error> {
-    info!("Creating author index");
-    conn.execute(
-        "CREATE INDEX author_id_index on messages (author_id)",
-        NO_PARAMS,
-    )
-    .map_err(|err| err.into())
+pub struct FlumeViewSql {
+    connection: Connection,
+    keys: Vec<SecretKey>,
 }
 
-fn create_root_index(conn: &Connection) -> Result<usize, Error> {
-    info!("Creating root index");
-    conn.execute(
-        "CREATE INDEX root_id_index on messages (root_id)",
-        NO_PARAMS,
-    )
-    .map_err(|err| err.into())
-}
-
-fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
-    info!("Creating links index");
-    conn.execute("CREATE INDEX links_to_id_index on links (link_to_id)", NO_PARAMS)
-        .map_err(|err| err.into())
-}
-
-fn create_content_type_index(conn: &Connection) -> Result<usize, Error> {
-    info!("Creating content type index");
-    conn.execute(
-        "CREATE INDEX content_type_index on messages (content_type)",
-        NO_PARAMS,
-    )
-    .map_err(|err| err.into())
-}
-
-fn create_tables(conn: &mut Connection) {
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS messages (
-          flume_seq INTEGER PRIMARY KEY,
-          key_id INTEGER, 
-          seq INTEGER,
-          received_time REAL,
-          asserted_time REAL,
-          root_id INTEGER,
-          fork_id INTEGER,
-          author_id INTEGER,
-          content_type TEXT,
-          content JSON,
-          is_decrypted BOOLEAN
-        )",
-        NO_PARAMS,
-    )
-    .unwrap();
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS authors (
-          id INTEGER PRIMARY KEY,
-          author TEXT UNIQUE
-        )",
-        NO_PARAMS,
-    )
-    .unwrap();
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS keys (
-          id INTEGER PRIMARY KEY,
-          key TEXT UNIQUE
-        )",
-        NO_PARAMS,
-    )
-    .unwrap();
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS links (
-          id INTEGER PRIMARY KEY,
-          link_from_id INTEGER,
-          link_to_id INTEGER
-        )",
-        NO_PARAMS,
-    )
-    .unwrap();
-}
-
-fn create_indices(connection: &Connection) {
-    create_author_index(&connection)
-        .and_then(|_| create_links_to_index(&connection))
-        .and_then(|_| create_content_type_index(&connection))
-        .and_then(|_| create_root_index(&connection))
-        .map(|_| ())
-        .unwrap_or_else(|_| ());
+impl FlumeView for FlumeViewSql {
+    fn append(&mut self, seq: Sequence, item: &[u8]) {
+        append_item(&self.connection, &self.keys, seq, item).unwrap()
+    }
+    fn latest(&self) -> Sequence {
+        self.get_latest().unwrap()
+    }
 }
 
 impl FlumeViewSql {
@@ -339,29 +244,126 @@ fn append_item(
     Ok(())
 }
 
-impl FlumeView for FlumeViewSql {
-    fn append(&mut self, seq: Sequence, item: &[u8]) {
-        append_item(&self.connection, &self.keys, seq, item).unwrap()
-    }
-    fn latest(&self) -> Sequence {
-        self.get_latest().unwrap()
-    }
+fn set_pragmas(conn: &mut Connection) {
+    conn.execute("PRAGMA synchronous = OFF", NO_PARAMS).unwrap();
+    conn.execute("PRAGMA page_size = 8192", NO_PARAMS).unwrap();
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct SsbValue {
-    author: String,
-    sequence: u32,
-    timestamp: f64,
-    content: Value,
+fn find_or_create_author(conn: &Connection, author: &str) -> Result<i64, Error> {
+    let mut stmt = conn.prepare_cached("SELECT id FROM authors WHERE author=?1")?;
+
+    stmt.query_row(&[author], |row| row.get(0))
+        .or_else(|_| {
+            conn.prepare_cached("INSERT INTO authors (author) VALUES (?)")
+                .map(|mut stmt| stmt.execute(&[author]))
+                .map(|_| conn.last_insert_rowid())
+        })
+        .map_err(|err| err.into())
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct SsbMessage {
-    key: String,
-    value: SsbValue,
-    timestamp: f64,
+fn find_or_create_key(conn: &Connection, key: &str) -> Result<i64, Error> {
+    let mut stmt = conn.prepare_cached("SELECT id FROM keys WHERE key=?1")?;
+
+    stmt.query_row(&[key], |row| row.get(0))
+        .or_else(|_| {
+            conn.prepare_cached("INSERT INTO keys (key) VALUES (?)")
+                .map(|mut stmt| stmt.execute(&[key]))
+                .map(|_| conn.last_insert_rowid())
+        })
+        .map_err(|err| err.into())
 }
+
+
+fn create_author_index(conn: &Connection) -> Result<usize, Error> {
+    info!("Creating author index");
+    conn.execute(
+        "CREATE INDEX author_id_index on messages (author_id)",
+        NO_PARAMS,
+    )
+    .map_err(|err| err.into())
+}
+
+fn create_root_index(conn: &Connection) -> Result<usize, Error> {
+    info!("Creating root index");
+    conn.execute(
+        "CREATE INDEX root_id_index on messages (root_id)",
+        NO_PARAMS,
+    )
+    .map_err(|err| err.into())
+}
+
+fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
+    info!("Creating links index");
+    conn.execute("CREATE INDEX links_to_id_index on links (link_to_id)", NO_PARAMS)
+        .map_err(|err| err.into())
+}
+
+fn create_content_type_index(conn: &Connection) -> Result<usize, Error> {
+    info!("Creating content type index");
+    conn.execute(
+        "CREATE INDEX content_type_index on messages (content_type)",
+        NO_PARAMS,
+    )
+    .map_err(|err| err.into())
+}
+
+fn create_tables(conn: &mut Connection) {
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS messages (
+          flume_seq INTEGER PRIMARY KEY,
+          key_id INTEGER, 
+          seq INTEGER,
+          received_time REAL,
+          asserted_time REAL,
+          root_id INTEGER,
+          fork_id INTEGER,
+          author_id INTEGER,
+          content_type TEXT,
+          content JSON,
+          is_decrypted BOOLEAN
+        )",
+        NO_PARAMS,
+    )
+    .unwrap();
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS authors (
+          id INTEGER PRIMARY KEY,
+          author TEXT UNIQUE
+        )",
+        NO_PARAMS,
+    )
+    .unwrap();
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS keys (
+          id INTEGER PRIMARY KEY,
+          key TEXT UNIQUE
+        )",
+        NO_PARAMS,
+    )
+    .unwrap();
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS links (
+          id INTEGER PRIMARY KEY,
+          link_from_id INTEGER,
+          link_to_id INTEGER
+        )",
+        NO_PARAMS,
+    )
+    .unwrap();
+}
+
+fn create_indices(connection: &Connection) {
+    create_author_index(&connection)
+        .and_then(|_| create_links_to_index(&connection))
+        .and_then(|_| create_content_type_index(&connection))
+        .and_then(|_| create_root_index(&connection))
+        .map(|_| ())
+        .unwrap_or_else(|_| ());
+}
+
 
 #[cfg(test)]
 mod test {
