@@ -186,24 +186,30 @@ fn attempt_decryption(mut message: SsbMessage, secret_keys: &[SecretKey]) -> (bo
     (is_decrypted, message)
 }
 
-fn append_item(
-    connection: &Connection,
-    secret_keys: &[SecretKey],
-    seq: Sequence,
-    item: &[u8],
-) -> Result<(), Error> {
-    let signed_seq = seq as i64;
-    let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages (flume_seq, key_id, seq, received_time, asserted_time, root_id, fork_id, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap();
-
+fn insert_links(connection: &Connection, message: &SsbMessage, message_key_id: i64) {
     let mut insert_link_stmt = connection
         .prepare_cached("INSERT INTO links (link_from_id, link_to_id) VALUES (?, ?)")
         .unwrap();
 
-    let message: SsbMessage = serde_json::from_slice(item).unwrap();
+    let mut links = Vec::new();
+    find_values_in_object_by_key(&message.value.content, "link", &mut links);
 
-    let (is_decrypted, message) = attempt_decryption(message, secret_keys);
+    links
+        .iter()
+        .filter(|link| link.is_string())
+        .map(|link| link.as_str().unwrap())
+        .map(|link| find_or_create_key(&connection, link).unwrap())
+        .for_each(|link_id| {
+            insert_link_stmt
+                .execute(&[&message_key_id, &link_id])
+                .unwrap();
+        });
+}
 
-    let message_key_id = find_or_create_key(&connection, &message.key).unwrap();
+fn insert_message(connection: &Connection, message: &SsbMessage, seq: i64, message_key_id: i64, is_decrypted: bool){
+
+    let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages (flume_seq, key_id, seq, received_time, asserted_time, root_id, fork_id, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap();
+
     let root_key_id = match message.value.content["root"] {
         Value::String(ref key) => {
             let id = find_or_create_key(&connection, &key).unwrap();
@@ -220,24 +226,11 @@ fn append_item(
         _ => None,
     };
 
-    let mut links = Vec::new();
-    find_values_in_object_by_key(&message.value.content, "link", &mut links);
-
-    links
-        .iter()
-        .filter(|link| link.is_string())
-        .map(|link| link.as_str().unwrap())
-        .map(|link| find_or_create_key(&connection, link).unwrap())
-        .for_each(|link_id| {
-            insert_link_stmt
-                .execute(&[&message_key_id, &link_id])
-                .unwrap();
-        });
 
     let author_id = find_or_create_author(&connection, &message.value.author).unwrap();
     insert_msg_stmt
         .execute(&[
-            &signed_seq as &ToSql,
+            &seq as &ToSql,
             &message_key_id,
             &message.value.sequence,
             &message.timestamp,
@@ -250,6 +243,24 @@ fn append_item(
             &is_decrypted as &ToSql,
         ])
         .unwrap();
+
+}
+
+fn append_item(
+    connection: &Connection,
+    secret_keys: &[SecretKey],
+    seq: Sequence,
+    item: &[u8],
+) -> Result<(), Error> {
+
+    let message: SsbMessage = serde_json::from_slice(item).unwrap();
+
+    let (is_decrypted, message) = attempt_decryption(message, secret_keys);
+
+    let message_key_id = find_or_create_key(&connection, &message.key).unwrap();
+
+    insert_links(connection, &message, message_key_id);
+    insert_message(connection, &message, seq as i64, message_key_id, is_decrypted);
 
     Ok(())
 }

@@ -37,3 +37,6 @@ module.exports = function SsbDb (logPath, dbPath, secretKey) {
     db.process(opts.chunkSize)
   }
 }
+
+module.exports.modifiers = require('./modifiers').modifiers
+module.exports.strings = require('./modifiers').strings
