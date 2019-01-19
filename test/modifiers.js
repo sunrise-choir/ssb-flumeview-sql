@@ -127,10 +127,9 @@ test('join message key and authors to message', function (t) {
 })
 
 test('backlinks', function (t) {
-  var id = '&MxwsfZoq7X6oqnEX/TWIlAqd6S+jsUA6T1hqZYdl7RM=.sha256'
-  var resultKey = '%kLWDux4wCG+OdQWAHnpBGzGlCehqMLfgLbzlKCvgesU=.sha256'
+  var id = '@ye+QM09iPcDJD6YvQYjoQc7sLF/IFhmNbEqgdzQo3lQ=.ed25519'
+  var resultKey = '%WCQziqKuknTZvaPgl0JR0hMmR5GQ+fhJyu9BZpW95wI=.sha256'
   var db = createTestDB()
-  // give me the message.key, message.author and message.timestamp of all the messages that link_to this key.
   db
     .knex
     .select([

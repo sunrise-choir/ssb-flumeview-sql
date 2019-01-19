@@ -6,6 +6,7 @@ const messages = 'messages'
 const keyId = `${messages}.key_id`
 const authorId = `${messages}.author_id`
 const messageType = `${messages}.content_type`
+const messageRootId = `${messages}.root_id`
 const isDecrypted = `${messages}.is_decrypted`
 
 // Get tip of a feed
@@ -20,7 +21,6 @@ module.exports.modifiers = {
   joinMessagesKey,
   joinLinksFrom,
   backLinksReferences
-
 }
 
 module.exports.strings = {
@@ -40,7 +40,12 @@ function whereMessageIsNotType (query, type) {
     messageType, type
   )
 }
-
+function whereMessageIsNotRoot (query, id, knex) {
+  query.whereNot(
+    messageRootId,
+    knex.select('keys.id').from(keys).where('keys.key', id)
+  )
+}
 function whereMessageIsPrivate (query) {
   query.where(
     isDecrypted, 1
@@ -70,6 +75,10 @@ function backLinksReferences (query, id, knex) {
     .modify(joinMessagesKey)
     .modify(joinMessagesAuthor)
     .modify(joinLinksFrom)
+    .modify(whereMessageIsNotType, 'about')
+    .modify(whereMessageIsNotType, 'vote')
+    .modify(whereMessageIsNotType, 'tag')
+    .modify(whereMessageIsNotRoot, id, knex)
     .where(
       'links.link_to_id',
       '=',

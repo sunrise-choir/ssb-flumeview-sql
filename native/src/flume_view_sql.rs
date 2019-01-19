@@ -68,7 +68,7 @@ impl FlumeViewSql {
     pub fn get_seq_by_key(&mut self, key: String) -> Result<i64, Error> {
         let mut stmt = self
             .connection
-            .prepare("SELECT messages.flume_seq FROM messages JOIN keys ON messages.key_id=keys.id WHERE keys.key=?1")?;
+            .prepare("SELECT flume_seq FROM messages_raw JOIN keys ON messages_raw.key_id=keys.id WHERE keys.key=?1")?;
 
         stmt.query_row(&[key], |row| row.get(0))
             .map_err(|err| err.into())
@@ -77,7 +77,7 @@ impl FlumeViewSql {
     pub fn get_seqs_by_type(&mut self, content_type: String) -> Result<Vec<i64>, Error> {
         let mut stmt = self
             .connection
-            .prepare("SELECT flume_seq FROM messages WHERE content_type=?1")?;
+            .prepare("SELECT flume_seq FROM messages_raw WHERE content_type=?1")?;
 
         let rows = stmt.query_map(&[content_type], |row| row.get(0))?;
 
@@ -188,7 +188,7 @@ fn attempt_decryption(mut message: SsbMessage, secret_keys: &[SecretKey]) -> (bo
 
 fn insert_links(connection: &Connection, message: &SsbMessage, message_key_id: i64) {
     let mut insert_link_stmt = connection
-        .prepare_cached("INSERT INTO links (link_from_id, link_to_id) VALUES (?, ?)")
+        .prepare_cached("INSERT INTO links_raw (link_from_id, link_to_id) VALUES (?, ?)")
         .unwrap();
 
     let mut links = Vec::new();
@@ -208,7 +208,7 @@ fn insert_links(connection: &Connection, message: &SsbMessage, message_key_id: i
 
 fn insert_message(connection: &Connection, message: &SsbMessage, seq: i64, message_key_id: i64, is_decrypted: bool){
 
-    let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages (flume_seq, key_id, seq, received_time, asserted_time, root_id, fork_id, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap();
+    let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages_raw (flume_seq, key_id, seq, received_time, asserted_time, root_id, fork_id, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap();
 
     let root_key_id = match message.value.content["root"] {
         Value::String(ref key) => {
@@ -297,7 +297,7 @@ fn find_or_create_key(conn: &Connection, key: &str) -> Result<i64, Error> {
 fn create_author_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating author index");
     conn.execute(
-        "CREATE INDEX author_id_index on messages (author_id)",
+        "CREATE INDEX author_id_index on messages_raw (author_id)",
         NO_PARAMS,
     )
     .map_err(|err| err.into())
@@ -306,7 +306,7 @@ fn create_author_index(conn: &Connection) -> Result<usize, Error> {
 fn create_root_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating root index");
     conn.execute(
-        "CREATE INDEX root_id_index on messages (root_id)",
+        "CREATE INDEX root_id_index on messages_raw (root_id)",
         NO_PARAMS,
     )
     .map_err(|err| err.into())
@@ -324,7 +324,7 @@ fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
 fn create_content_type_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating content type index");
     conn.execute(
-        "CREATE INDEX content_type_index on messages (content_type)",
+        "CREATE INDEX content_type_index on messages_raw (content_type)",
         NO_PARAMS,
     )
     .map_err(|err| err.into())
@@ -332,7 +332,7 @@ fn create_content_type_index(conn: &Connection) -> Result<usize, Error> {
 
 fn create_tables(conn: &mut Connection) {
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS messages (
+        "CREATE TABLE IF NOT EXISTS messages_raw (
           flume_seq INTEGER PRIMARY KEY,
           key_id INTEGER, 
           seq INTEGER,
@@ -368,7 +368,7 @@ fn create_tables(conn: &mut Connection) {
     .unwrap();
 
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS links (
+        "CREATE TABLE IF NOT EXISTS links_raw (
           id INTEGER PRIMARY KEY,
           link_from_id INTEGER,
           link_to_id INTEGER
@@ -376,6 +376,113 @@ fn create_tables(conn: &mut Connection) {
         NO_PARAMS,
     )
     .unwrap();
+
+    conn.execute(
+        "
+        CREATE VIEW links AS
+        SELECT 
+        links_raw.id as id, 
+        links_raw.link_from_id as link_from_id, 
+        links_raw.link_to_id as link_to_id, 
+        keys.key as link_from, 
+        keys2.key as link_to
+        FROM links_raw 
+        JOIN keys ON keys.id=links_raw.link_from_id
+        JOIN keys AS keys2 ON keys2.id=links_raw.link_to_id
+        ",
+        NO_PARAMS,
+    )
+    .unwrap();
+
+    conn.execute(
+        "
+        CREATE VIEW messages AS
+        SELECT 
+        messages_raw.flume_seq as flume_seq,
+        messages_raw.key_id as key_id,
+        messages_raw.seq as seq,
+        messages_raw.received_time as received_time,
+        messages_raw.asserted_time as asserted_time,
+        messages_raw.root_id as root_id,
+        messages_raw.fork_id as fork_id,
+        messages_raw.author_id as author_id,
+        messages_raw.content as content,
+        messages_raw.content_type as content_type,
+        messages_raw.is_decrypted as is_decrypted,
+        keys.key as key,
+        keys2.key as root,
+        keys3.key as fork,
+        authors.author as author
+        FROM messages_raw 
+        JOIN keys ON keys.id=messages_raw.key_id
+        JOIN keys AS keys2 ON keys2.id=messages_raw.root_id
+        JOIN keys AS keys3 ON keys3.id=messages_raw.fork_id
+        JOIN authors ON authors.id=messages_raw.author_id
+        ",
+        NO_PARAMS,
+    )
+    .unwrap();
+
+    conn.execute(
+        "
+    CREATE TABLE contacts(
+        id INTEGER PRIMARY KEY,
+        author_id INTEGER,
+        contact_author_id INTEGER,
+        state INTEGER
+    ) 
+    ",
+        NO_PARAMS,
+    )
+    .unwrap();
+
+
+    conn.execute(
+        "
+    CREATE TRIGGER contacts_block_trigger AFTER INSERT ON messages_raw
+    WHEN NEW.content_type='contact'
+    AND json_extract(NEW.content, '$.blocking')=true
+    BEGIN
+    REPLACE INTO contacts (author_id, contact_author_id, state)
+    VALUES
+    (NEW.author_id, json_extract(NEW.content, '$.contact'), -1);
+    END
+    ",
+        NO_PARAMS,
+    )
+    .unwrap();
+
+    conn.execute(
+        "
+    CREATE TRIGGER contacts_neutral_trigger AFTER INSERT ON messages_raw
+    WHEN NEW.content_type='contact'
+    AND json_extract(NEW.content, '$.blocking')=false
+    AND json_extract(NEW.content, '$.following')=false
+    BEGIN
+    DELETE FROM contacts WHERE author_id=NEW.author_id AND contact_author_id=json_extract(NEW.content, '$.contact');
+    END
+    ",
+        NO_PARAMS,
+    )
+    .unwrap();
+
+    conn.execute(
+        "
+    CREATE TRIGGER contacts_follow_trigger AFTER INSERT ON messages_raw
+    WHEN NEW.content_type='contact'
+    AND json_extract(NEW.content, '$.blocking')=false
+    AND json_extract(NEW.content, '$.following')=true
+    BEGIN
+    REPLACE INTO contacts (author_id, contact_author_id, state)
+    VALUES
+    (NEW.author_id, json_extract(NEW.content, '$.contact'), 1);
+    END
+    ",
+    NO_PARAMS,
+    )
+    .unwrap();
+
+
 }
 
 fn create_indices(connection: &Connection) {
