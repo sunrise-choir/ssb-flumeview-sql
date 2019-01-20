@@ -65,7 +65,7 @@ impl FlumeViewSql {
         }
     }
 
-    pub fn get_seq_by_key(&mut self, key: String) -> Result<i64, Error> {
+    pub fn get_seq_by_key(&mut self, key: &str) -> Result<i64, Error> {
         let mut stmt = self
             .connection
             .prepare("SELECT flume_seq FROM messages_raw JOIN keys ON messages_raw.key_id=keys.id WHERE keys.key=?1")?;
@@ -74,7 +74,7 @@ impl FlumeViewSql {
             .map_err(|err| err.into())
     }
 
-    pub fn get_seqs_by_type(&mut self, content_type: String) -> Result<Vec<i64>, Error> {
+    pub fn get_seqs_by_type(&mut self, content_type: &str) -> Result<Vec<i64>, Error> {
         let mut stmt = self
             .connection
             .prepare("SELECT flume_seq FROM messages_raw WHERE content_type=?1")?;
@@ -88,6 +88,22 @@ impl FlumeViewSql {
 
         Ok(seqs)
     }
+
+    pub fn get_seqs_by_author(&mut self, author: &str) -> Result<Vec<i64>, Error> {
+        let mut stmt = self
+            .connection
+            .prepare("SELECT flume_seq FROM messages_raw JOIN authors ON messages_raw.author_id=authors.id WHERE author=?1")?;
+
+        let rows = stmt.query_map(&[author], |row| row.get(0))?;
+
+        let seqs = rows.fold(Vec::<i64>::new(), |mut vec, row| {
+            vec.push(row.unwrap());
+            vec
+        });
+
+        Ok(seqs)
+    }
+
 
     pub fn append_batch(&mut self, items: Vec<(Sequence, Vec<u8>)>) {
         info!("Start batch append");
@@ -206,8 +222,13 @@ fn insert_links(connection: &Connection, message: &SsbMessage, message_key_id: i
         });
 }
 
-fn insert_message(connection: &Connection, message: &SsbMessage, seq: i64, message_key_id: i64, is_decrypted: bool){
-
+fn insert_message(
+    connection: &Connection,
+    message: &SsbMessage,
+    seq: i64,
+    message_key_id: i64,
+    is_decrypted: bool,
+) {
     let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages_raw (flume_seq, key_id, seq, received_time, asserted_time, root_id, fork_id, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap();
 
     let root_key_id = match message.value.content["root"] {
@@ -226,7 +247,6 @@ fn insert_message(connection: &Connection, message: &SsbMessage, seq: i64, messa
         _ => None,
     };
 
-
     let author_id = find_or_create_author(&connection, &message.value.author).unwrap();
     insert_msg_stmt
         .execute(&[
@@ -243,7 +263,42 @@ fn insert_message(connection: &Connection, message: &SsbMessage, seq: i64, messa
             &is_decrypted as &ToSql,
         ])
         .unwrap();
+}
 
+fn insert_or_update_contacts(
+    connection: &Connection,
+    message: &SsbMessage,
+    message_key_id: i64,
+    is_decrypted: bool,
+) {
+    if message.value.content["type"].as_str() == Some("contact") {
+        let is_blocking = message.value.content["blocking"].as_bool().unwrap_or(false);
+        let is_following = message.value.content["following"].as_bool().unwrap_or(false);
+        let state = if is_blocking {
+            -1
+        } else if is_following {
+            1
+        } else {
+            0
+        };
+
+        if let Value::String(contact) = &message.value.content["contact"] {
+            let author_id = find_or_create_author(&connection, &message.value.author).unwrap();
+            let mut insert_contacts_stmt = connection
+               .prepare_cached("REPLACE INTO contacts_raw (author_id, contact_author_id, state, is_decrypted) VALUES (?, ?, ?, ?)")
+               .unwrap();
+            let contact_author_id = find_or_create_author(&connection, contact).unwrap();
+
+            insert_contacts_stmt
+                .execute(&[
+                    &author_id,
+                    &contact_author_id,
+                    &state,
+                    &is_decrypted as &ToSql,
+                ])
+                .unwrap();
+        }
+    }
 }
 
 fn append_item(
@@ -252,7 +307,6 @@ fn append_item(
     seq: Sequence,
     item: &[u8],
 ) -> Result<(), Error> {
-
     let message: SsbMessage = serde_json::from_slice(item).unwrap();
 
     let (is_decrypted, message) = attempt_decryption(message, secret_keys);
@@ -260,7 +314,14 @@ fn append_item(
     let message_key_id = find_or_create_key(&connection, &message.key).unwrap();
 
     insert_links(connection, &message, message_key_id);
-    insert_message(connection, &message, seq as i64, message_key_id, is_decrypted);
+    insert_message(
+        connection,
+        &message,
+        seq as i64,
+        message_key_id,
+        is_decrypted,
+    );
+    insert_or_update_contacts(&connection, &message, message_key_id, is_decrypted);
 
     Ok(())
 }
@@ -297,7 +358,7 @@ fn find_or_create_key(conn: &Connection, key: &str) -> Result<i64, Error> {
 fn create_author_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating author index");
     conn.execute(
-        "CREATE INDEX author_id_index on messages_raw (author_id)",
+        "CREATE INDEX IF NOT EXISTS author_id_index on messages_raw (author_id)",
         NO_PARAMS,
     )
     .map_err(|err| err.into())
@@ -306,7 +367,7 @@ fn create_author_index(conn: &Connection) -> Result<usize, Error> {
 fn create_root_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating root index");
     conn.execute(
-        "CREATE INDEX root_id_index on messages_raw (root_id)",
+        "CREATE INDEX IF NOT EXISTS root_id_index on messages_raw (root_id)",
         NO_PARAMS,
     )
     .map_err(|err| err.into())
@@ -315,7 +376,7 @@ fn create_root_index(conn: &Connection) -> Result<usize, Error> {
 fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating links index");
     conn.execute(
-        "CREATE INDEX links_to_id_index on links (link_to_id)",
+        "CREATE INDEX IF NOT EXISTS links_to_id_index on links_raw (link_to_id)",
         NO_PARAMS,
     )
     .map_err(|err| err.into())
@@ -324,7 +385,16 @@ fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
 fn create_content_type_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating content type index");
     conn.execute(
-        "CREATE INDEX content_type_index on messages_raw (content_type)",
+        "CREATE INDEX IF NOT EXISTS content_type_index on messages_raw (content_type)",
+        NO_PARAMS,
+    )
+    .map_err(|err| err.into())
+}
+
+fn create_contacts_author_id_index(conn: &Connection) -> Result<usize, Error> {
+    info!("Creating contacts author_id index");
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS contacts_raw_author_id_index on contacts_raw (author_id)",
         NO_PARAMS,
     )
     .map_err(|err| err.into())
@@ -425,64 +495,17 @@ fn create_tables(conn: &mut Connection) {
 
     conn.execute(
         "
-    CREATE TABLE contacts(
+    CREATE TABLE contacts_raw(
         id INTEGER PRIMARY KEY,
         author_id INTEGER,
         contact_author_id INTEGER,
+        is_decrypted BOOLEAN,
         state INTEGER
     ) 
     ",
         NO_PARAMS,
     )
     .unwrap();
-
-
-    conn.execute(
-        "
-    CREATE TRIGGER contacts_block_trigger AFTER INSERT ON messages_raw
-    WHEN NEW.content_type='contact'
-    AND json_extract(NEW.content, '$.blocking')=true
-    BEGIN
-    REPLACE INTO contacts (author_id, contact_author_id, state)
-    VALUES
-    (NEW.author_id, json_extract(NEW.content, '$.contact'), -1);
-    END
-    ",
-        NO_PARAMS,
-    )
-    .unwrap();
-
-    conn.execute(
-        "
-    CREATE TRIGGER contacts_neutral_trigger AFTER INSERT ON messages_raw
-    WHEN NEW.content_type='contact'
-    AND json_extract(NEW.content, '$.blocking')=false
-    AND json_extract(NEW.content, '$.following')=false
-    BEGIN
-    DELETE FROM contacts WHERE author_id=NEW.author_id AND contact_author_id=json_extract(NEW.content, '$.contact');
-    END
-    ",
-        NO_PARAMS,
-    )
-    .unwrap();
-
-    conn.execute(
-        "
-    CREATE TRIGGER contacts_follow_trigger AFTER INSERT ON messages_raw
-    WHEN NEW.content_type='contact'
-    AND json_extract(NEW.content, '$.blocking')=false
-    AND json_extract(NEW.content, '$.following')=true
-    BEGIN
-    REPLACE INTO contacts (author_id, contact_author_id, state)
-    VALUES
-    (NEW.author_id, json_extract(NEW.content, '$.contact'), 1);
-    END
-    ",
-    NO_PARAMS,
-    )
-    .unwrap();
-
-
 }
 
 fn create_indices(connection: &Connection) {
@@ -490,8 +513,8 @@ fn create_indices(connection: &Connection) {
         .and_then(|_| create_links_to_index(&connection))
         .and_then(|_| create_content_type_index(&connection))
         .and_then(|_| create_root_index(&connection))
-        .map(|_| ())
-        .unwrap_or_else(|_| ());
+        .and_then(|_| create_contacts_author_id_index(&connection))
+        .unwrap();
 }
 
 #[cfg(test)]
@@ -562,11 +585,11 @@ mod test {
 "#####;
         view.append(expected_seq, jsn.as_bytes());
         let seq = view
-            .get_seq_by_key("%KKPLj1tWfuVhCvgJz2hG/nIsVzmBRzUJaqHv+sb+n1c=.sha256".to_string())
+            .get_seq_by_key("%KKPLj1tWfuVhCvgJz2hG/nIsVzmBRzUJaqHv+sb+n1c=.sha256")
             .unwrap();
         assert_eq!(seq, expected_seq as i64);
 
-        let seqs = view.get_seqs_by_type("post".to_string()).unwrap();
+        let seqs = view.get_seqs_by_type("post").unwrap();
         assert_eq!(seqs[0], expected_seq as i64);
     }
 

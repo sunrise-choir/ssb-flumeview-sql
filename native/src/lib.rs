@@ -158,8 +158,11 @@ pub extern "C" fn construct_view_class(env: napi_env, info: napi_callback_info) 
     let raw_parts = get_buffer_info(env, secret_key_value);
 
     let secret_key_bytes = unsafe { slice::from_raw_parts(raw_parts.0, raw_parts.1) };
-    let secret_key = SecretKey::from_slice(secret_key_bytes).unwrap_or_else(||{
-        let empty_slice = vec![0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+    let secret_key = SecretKey::from_slice(secret_key_bytes).unwrap_or_else(|| {
+        let empty_slice = vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ];
         SecretKey::from_slice(&empty_slice[0..32]).unwrap()
     });
     let keys = vec![secret_key];
