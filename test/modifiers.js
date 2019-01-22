@@ -16,7 +16,7 @@ var {
 const numRows = 100
 
 function createTestDB () {
-  var logPath = '/tmp/test_indexing.sqlite'
+  var logPath = '/tmp/test_modifiers.sqlite'
   var secretKey = Buffer.from('')
   rimraf.sync(logPath)
   var db = Db('/home/piet/.ssb/flume/log.offset', logPath, secretKey)
@@ -133,13 +133,14 @@ test('backlinks', function (t) {
   db
     .knex
     .select([
-      'keys.key as key',
-      'authors.author as author',
-      'messages.received_time as timestamp'
+      'key',
+      'author',
+      'received_time as timestamp'
     ])
     .from(messages)
     .modify(backLinksReferences, id, db.knex)
     .then(function (results) {
+      console.log('results here: ', results)
       t.equal(results[0].key, resultKey)
       t.end()
       db.knex.destroy()

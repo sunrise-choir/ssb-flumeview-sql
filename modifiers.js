@@ -2,8 +2,10 @@ const links = 'links'
 const keys = 'keys'
 const authors = 'authors'
 
+const messages_raw = 'messages_raw'
 const messages = 'messages'
 const keyId = `${messages}.key_id`
+const key = `${messages}.key`
 const authorId = `${messages}.author_id`
 const messageType = `${messages}.content_type`
 const messageRootId = `${messages}.root_id`
@@ -43,7 +45,7 @@ function whereMessageIsNotType (query, type) {
 function whereMessageIsNotRoot (query, id, knex) {
   query.whereNot(
     messageRootId,
-    knex.select('keys.id').from(keys).where('keys.key', id)
+    keys
   )
 }
 function whereMessageIsPrivate (query) {
@@ -67,21 +69,18 @@ function joinMessagesKey (query) {
 }
 
 function joinLinksFrom (query) {
-  query.join(links, 'links.link_from_id', keyId)
+  query.join(links, 'links.link_from', key)
 }
 
 function backLinksReferences (query, id, knex) {
   query
-    .modify(joinMessagesKey)
-    .modify(joinMessagesAuthor)
-    .modify(joinLinksFrom)
     .modify(whereMessageIsNotType, 'about')
     .modify(whereMessageIsNotType, 'vote')
     .modify(whereMessageIsNotType, 'tag')
     .modify(whereMessageIsNotRoot, id, knex)
+    .join(links, 'links.link_to', key)
     .where(
       'links.link_to_id',
-      '=',
-      knex.select('keys.id').from(keys).where('keys.key', id)
+      key
     )
 }
