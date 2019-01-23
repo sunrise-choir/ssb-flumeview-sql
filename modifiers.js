@@ -6,7 +6,8 @@ const messages_raw = 'messages_raw'
 const messages = 'messages'
 const keyId = `${messages}.key_id`
 const key = `${messages}.key`
-const authorId = `${messages}.author_id`
+const messageesAuthorId = `${messages}.author_id`
+const messageesAuthor = `${messages}.author`
 const messageType = `${messages}.content_type`
 const messageRootId = `${messages}.root_id`
 const messageRoot = `${messages}.root`
@@ -20,8 +21,6 @@ module.exports.modifiers = {
   whereMessageIsNotType,
   whereMessageIsPrivate,
   whereMessageIsNotPrivate,
-  joinMessagesAuthor,
-  joinMessagesKey,
   joinLinksFrom,
   backLinksReferences
 }
@@ -59,14 +58,6 @@ function whereMessageIsNotPrivate (query) {
   query.whereNot(
     isDecrypted, 1
   )
-}
-
-function joinMessagesAuthor (query) {
-  query.join(authors, 'authors.id', authorId)
-}
-
-function joinMessagesKey (query) {
-  query.join(keys, 'keys.id', keyId)
 }
 
 function joinLinksFrom (query) {

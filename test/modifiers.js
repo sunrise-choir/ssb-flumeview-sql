@@ -7,9 +7,6 @@ var {
   whereMessageIsNotType,
   whereMessageIsPrivate,
   whereMessageIsNotPrivate,
-  joinMessagesAuthor,
-  joinMessagesKey,
-  joinLinksFrom,
   backLinksReferences
 } = require('../modifiers').modifiers
 
@@ -74,53 +71,6 @@ test('not private messages', function (t) {
     .modify(whereMessageIsNotPrivate)
     .then(function (result) {
       t.equal(result.length, numRows) // We don't have a secret key set, so there will be 0 private messages
-      t.end()
-      db.knex.destroy()
-    })
-})
-
-test('join author to messages', function (t) {
-  var db = createTestDB()
-
-  db
-    .knex(messages)
-    .modify(joinMessagesAuthor)
-    .limit(1)
-    .then(function (result) {
-      t.ok(result[0].author) // We don't have a secret key set, so there will be 0 private messages
-      t.end()
-      db.knex.destroy()
-    })
-})
-
-test('join message key to message', function (t) {
-  var db = createTestDB()
-  var key = '%/v5mCnV/kmnVtnF3zXtD4tbzoEQo4kRq/0d/bgxP1WI=.sha256'
-
-  db
-    .knex(messages)
-    .modify(joinMessagesKey)
-    .limit(1)
-    .then(function (result) {
-      t.equal(result[0].key, key) // We don't have a secret key set, so there will be 0 private messages
-      t.end()
-      db.knex.destroy()
-    })
-})
-
-test('join message key and authors to message', function (t) {
-  var db = createTestDB()
-  var key = '%/v5mCnV/kmnVtnF3zXtD4tbzoEQo4kRq/0d/bgxP1WI=.sha256'
-  var author = '@U5GvOKP/YUza9k53DSXxT0mk3PIrnyAmessvNfZl5E0=.ed25519'
-
-  db
-    .knex(messages)
-    .modify(joinMessagesKey)
-    .modify(joinMessagesAuthor)
-    .limit(1)
-    .then(function (result) {
-      t.equal(result[0].key, key)
-      t.equal(result[0].author, author)
       t.end()
       db.knex.destroy()
     })
