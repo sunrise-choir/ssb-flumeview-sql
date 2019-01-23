@@ -104,7 +104,6 @@ impl FlumeViewSql {
         Ok(seqs)
     }
 
-
     pub fn append_batch(&mut self, items: Vec<(Sequence, Vec<u8>)>) {
         info!("Start batch append");
         let tx = self.connection.transaction().unwrap();
@@ -135,7 +134,7 @@ impl FlumeViewSql {
 
         let mut stmt = self
             .connection
-            .prepare_cached("SELECT MAX(flume_seq) FROM messages")?;
+            .prepare_cached("SELECT MAX(flume_seq) FROM messages_raw")?;
 
         stmt.query_row(NO_PARAMS, |row| {
             let res: i64 = row.get_checked(0).unwrap_or(0);
@@ -273,7 +272,9 @@ fn insert_or_update_contacts(
 ) {
     if message.value.content["type"].as_str() == Some("contact") {
         let is_blocking = message.value.content["blocking"].as_bool().unwrap_or(false);
-        let is_following = message.value.content["following"].as_bool().unwrap_or(false);
+        let is_following = message.value.content["following"]
+            .as_bool()
+            .unwrap_or(false);
         let state = if is_blocking {
             -1
         } else if is_following {
@@ -449,7 +450,7 @@ fn create_tables(conn: &mut Connection) {
 
     conn.execute(
         "
-        CREATE VIEW links AS
+        CREATE VIEW IF NOT EXISTS links AS
         SELECT 
         links_raw.id as id, 
         links_raw.link_from_id as link_from_id, 
@@ -466,27 +467,27 @@ fn create_tables(conn: &mut Connection) {
 
     conn.execute(
         "
-        CREATE VIEW messages AS
+        CREATE VIEW IF NOT EXISTS messages AS
         SELECT 
-        messages_raw.flume_seq as flume_seq,
-        messages_raw.key_id as key_id,
-        messages_raw.seq as seq,
-        messages_raw.received_time as received_time,
-        messages_raw.asserted_time as asserted_time,
-        messages_raw.root_id as root_id,
-        messages_raw.fork_id as fork_id,
-        messages_raw.author_id as author_id,
-        messages_raw.content as content,
-        messages_raw.content_type as content_type,
-        messages_raw.is_decrypted as is_decrypted,
+        flume_seq,
+        key_id,
+        seq,
+        received_time,
+        asserted_time,
+        root_id,
+        fork_id,
+        author_id,
+        content,
+        content_type,
+        is_decrypted,
         keys.key as key,
-        keys2.key as root,
-        keys3.key as fork,
+        root_keys.key as root,
+        fork_keys.key as fork,
         authors.author as author
         FROM messages_raw 
         JOIN keys ON keys.id=messages_raw.key_id
-        JOIN keys AS keys2 ON keys2.id=messages_raw.root_id
-        JOIN keys AS keys3 ON keys3.id=messages_raw.fork_id
+        LEFT JOIN keys AS root_keys ON root_keys.id=messages_raw.root_id
+        LEFT JOIN keys AS fork_keys ON fork_keys.id=messages_raw.fork_id
         JOIN authors ON authors.id=messages_raw.author_id
         ",
         NO_PARAMS,
@@ -495,7 +496,7 @@ fn create_tables(conn: &mut Connection) {
 
     conn.execute(
         "
-    CREATE TABLE contacts_raw(
+    CREATE TABLE IF NOT EXISTS contacts_raw(
         id INTEGER PRIMARY KEY,
         author_id INTEGER,
         contact_author_id INTEGER,
