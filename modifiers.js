@@ -9,6 +9,7 @@ const key = `${messages}.key`
 const authorId = `${messages}.author_id`
 const messageType = `${messages}.content_type`
 const messageRootId = `${messages}.root_id`
+const messageRoot = `${messages}.root`
 const isDecrypted = `${messages}.is_decrypted`
 
 // Get tip of a feed
@@ -42,10 +43,10 @@ function whereMessageIsNotType (query, type) {
     messageType, type
   )
 }
-function whereMessageIsNotRoot (query, id, knex) {
+function whereMessageIsNotRoot (query, id) {
   query.whereNot(
-    messageRootId,
-    keys
+    messageRoot,
+    id
   )
 }
 function whereMessageIsPrivate (query) {
@@ -77,10 +78,10 @@ function backLinksReferences (query, id, knex) {
     .modify(whereMessageIsNotType, 'about')
     .modify(whereMessageIsNotType, 'vote')
     .modify(whereMessageIsNotType, 'tag')
-    .modify(whereMessageIsNotRoot, id, knex)
+    .modify(whereMessageIsNotRoot, id)
     .join(links, 'links.link_to', key)
     .where(
-      'links.link_to_id',
-      key
+      'links.link_to',
+      id
     )
 }

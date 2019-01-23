@@ -13,7 +13,7 @@ var {
   backLinksReferences
 } = require('../modifiers').modifiers
 
-const numRows = 100
+const numRows = 1000
 
 function createTestDB () {
   var logPath = '/tmp/test_modifiers.sqlite'
@@ -127,20 +127,19 @@ test('join message key and authors to message', function (t) {
 })
 
 test('backlinks', function (t) {
-  var id = '@ye+QM09iPcDJD6YvQYjoQc7sLF/IFhmNbEqgdzQo3lQ=.ed25519'
-  var resultKey = '%WCQziqKuknTZvaPgl0JR0hMmR5GQ+fhJyu9BZpW95wI=.sha256'
+  var id = '%c2qA4o+aiMzkx0QzV48WZRxv/VaiXXURbHSwFnL9rYo=.sha256'
+  var resultKey = '%IH7489JoCxbVcAB9Sn9Y0OpuXJ3/aQwJnPIMbiQimtE=.sha256'
   var db = createTestDB()
   db
     .knex
     .select([
-      'key',
+      'links.link_from as key',
       'author',
       'received_time as timestamp'
     ])
     .from(messages)
     .modify(backLinksReferences, id, db.knex)
     .then(function (results) {
-      console.log('results here: ', results)
       t.equal(results[0].key, resultKey)
       t.end()
       db.knex.destroy()
