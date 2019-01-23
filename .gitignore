@@ -5,3 +5,6 @@ native/CMakeFiles
 native/CMakeCache.txt
 native/cmake_install.cmake
 native/Makefile
+native/sqlite
+native/libsodium
+native/dockcross
