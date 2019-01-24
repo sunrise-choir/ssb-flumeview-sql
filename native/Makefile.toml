@@ -92,7 +92,7 @@ script = [
 	"cd ${SODIUM_DIR}",
 	"${DOCKER_CROSS_SCRIPT} ./autogen.sh",
 	"${DOCKER_CROSS_SCRIPT} ./configure --prefix=${DOCKER_CROSS_SODIUM_INSTALL_DIR} --disable-shared --enable-static --disable-pie --host=${DOCKER_CROSS_TRIPLE}",
-	"${DOCKER_CROSS_SCRIPT} make",
+	"${DOCKER_CROSS_SCRIPT} make -j4",
 	"${DOCKER_CROSS_SCRIPT} make install",
 ]
 dependencies = ["dockercross_create_script", "sodium_checkout"]

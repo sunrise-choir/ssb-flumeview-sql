@@ -27,7 +27,9 @@ module.exports = function SsbDb (logPath, dbPath, secretKey) {
   var exports = {
     process,
     getLatest: () => db.getLatest(),
-    knex
+    knex,
+    modifiers: require('./modifiers').modifiers,
+    strings: require('./modifiers').strings
   }
 
   return exports

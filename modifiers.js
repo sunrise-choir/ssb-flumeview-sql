@@ -11,6 +11,7 @@ const messageesAuthor = `${messages}.author`
 const messageType = `${messages}.content_type`
 const messageRootId = `${messages}.root_id`
 const messageRoot = `${messages}.root`
+const messageFork = `${messages}.fork`
 const isDecrypted = `${messages}.is_decrypted`
 
 // Get tip of a feed
@@ -22,6 +23,7 @@ module.exports.modifiers = {
   whereMessageIsPrivate,
   whereMessageIsNotPrivate,
   joinLinksFrom,
+  joinLinksTo,
   backLinksReferences
 }
 
@@ -31,20 +33,26 @@ module.exports.strings = {
   keys
 }
 
-function whereMessageType (query, type) {
+function whereMessageType (query, typeString) {
   query.where(
-    messageType, type
+    messageType, typeString
   )
 }
 
-function whereMessageIsNotType (query, type) {
+function whereMessageIsNotType (query, typeString) {
   query.whereNot(
-    messageType, type
+    messageType, typeString
   )
 }
 function whereMessageIsNotRoot (query, id) {
   query.whereNot(
     messageRoot,
+    id
+  )
+}
+function whereMessageIsNotFork (query, id) {
+  query.whereNot(
+    messageFork,
     id
   )
 }
@@ -64,13 +72,21 @@ function joinLinksFrom (query) {
   query.join(links, 'links.link_from', key)
 }
 
+function joinMessagesOnLinksFrom (query) {
+  query.join(messages, 'links.link_from', key)
+}
+
+function joinLinksTo (query) {
+  query.join(links, 'links.link_to', key)
+}
+
 function backLinksReferences (query, id, knex) {
   query
+    .modify(joinMessagesOnLinksFrom)
+    .modify(whereMessageIsNotRoot, id)
     .modify(whereMessageIsNotType, 'about')
     .modify(whereMessageIsNotType, 'vote')
     .modify(whereMessageIsNotType, 'tag')
-    .modify(whereMessageIsNotRoot, id)
-    .join(links, 'links.link_to', key)
     .where(
       'links.link_to',
       id

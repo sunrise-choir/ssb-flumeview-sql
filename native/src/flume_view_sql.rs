@@ -377,7 +377,7 @@ fn create_root_index(conn: &Connection) -> Result<usize, Error> {
 fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
     info!("Creating links index");
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS links_to_id_index on links_raw (link_to_id)",
+        "CREATE INDEX IF NOT EXISTS links_id_index on links_raw (link_to_id, link_from_id)",
         NO_PARAMS,
     )
     .map_err(|err| err.into())
@@ -401,11 +401,12 @@ fn create_contacts_author_id_index(conn: &Connection) -> Result<usize, Error> {
     .map_err(|err| err.into())
 }
 
+
 fn create_tables(conn: &mut Connection) {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS messages_raw (
           flume_seq INTEGER PRIMARY KEY,
-          key_id INTEGER, 
+          key_id INTEGER UNIQUE, 
           seq INTEGER,
           received_time REAL,
           asserted_time REAL,

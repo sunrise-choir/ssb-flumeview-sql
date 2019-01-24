@@ -7,16 +7,22 @@ var {
   whereMessageIsNotType,
   whereMessageIsPrivate,
   whereMessageIsNotPrivate,
-  backLinksReferences
+  whereMessageIsNotFork,
+  whereMessageIsNotRoot,
+  backLinksReferences,
+  joinLinksTo,
+  joinLinksFrom
+
 } = require('../modifiers').modifiers
 
 const numRows = 1000
 
-function createTestDB () {
+function createTestDB (offsetPath) {
+  offsetPath = offsetPath || '/home/piet/.ssb/flume/log.offset'
   var logPath = '/tmp/test_modifiers.sqlite'
   var secretKey = Buffer.from('')
   rimraf.sync(logPath)
-  var db = Db('/home/piet/.ssb/flume/log.offset', logPath, secretKey)
+  var db = Db(offsetPath, logPath, secretKey)
 
   db.process({ chunkSize: numRows })
 
@@ -76,10 +82,35 @@ test('not private messages', function (t) {
     })
 })
 
+test.only('get some backlinks', function (t) {
+  var db = createTestDB()
+  db.process(5000)
+  db
+    .knex
+    .select()
+    .from(messages)
+    .modify(joinLinksFrom)
+    .modify(whereMessageIsNotType, 'about')
+    .modify(whereMessageIsNotType, 'vote')
+    .modify(whereMessageIsNotType, 'tag')
+    .limit(20)
+    .offset(10)
+    .then(function (results) {
+      t.end()
+      console.log(results)
+      db.knex.destroy()
+    })
+    .catch(function (err) {
+      console.log(err)
+      db.knex.destroy()
+    })
+})
+
 test('backlinks', function (t) {
   var id = '%c2qA4o+aiMzkx0QzV48WZRxv/VaiXXURbHSwFnL9rYo=.sha256'
   var resultKey = '%IH7489JoCxbVcAB9Sn9Y0OpuXJ3/aQwJnPIMbiQimtE=.sha256'
   var db = createTestDB()
+
   db
     .knex
     .select([
@@ -87,7 +118,7 @@ test('backlinks', function (t) {
       'author',
       'received_time as timestamp'
     ])
-    .from(messages)
+    .from(links)
     .modify(backLinksReferences, id, db.knex)
     .then(function (results) {
       t.equal(results[0].key, resultKey)
