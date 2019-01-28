@@ -9,7 +9,12 @@ use serde_json::Value;
 
 use private_box::SecretKey;
 
-use log;
+mod messages;
+use self::messages::{
+    create_messages_tables,
+    create_messages_views,
+    create_messages_indices
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct SsbValue {
@@ -47,22 +52,22 @@ impl FlumeView for FlumeViewSql {
 }
 
 impl FlumeViewSql {
-    pub fn new(path: &str, secret_keys: Vec<SecretKey>) -> FlumeViewSql {
+    pub fn new(path: &str, secret_keys: Vec<SecretKey>) -> Result<FlumeViewSql, Error> {
         //let mut connection = Connection::open(path).expect("unable to open sqlite connection");
         let flags: OpenFlags = OpenFlags::SQLITE_OPEN_READ_WRITE
             | OpenFlags::SQLITE_OPEN_CREATE
             | OpenFlags::SQLITE_OPEN_NO_MUTEX;
         let mut connection =
-            Connection::open_with_flags(path, flags).expect("unable to open sqlite connection");
+            Connection::open_with_flags(path, flags)?;
 
         set_pragmas(&mut connection);
-        create_tables(&mut connection);
-        create_indices(&connection);
+        create_tables(&mut connection)?;
+        create_indices(&connection)?;
 
-        FlumeViewSql {
+        Ok(FlumeViewSql {
             connection,
             secret_keys,
-        }
+        })
     }
 
     pub fn get_seq_by_key(&mut self, key: &str) -> Result<i64, Error> {
@@ -105,7 +110,7 @@ impl FlumeViewSql {
     }
 
     pub fn append_batch(&mut self, items: Vec<(Sequence, Vec<u8>)>) {
-        info!("Start batch append");
+        trace!("Start batch append");
         let tx = self.connection.transaction().unwrap();
 
         for item in items {
@@ -130,7 +135,6 @@ impl FlumeViewSql {
     }
 
     pub fn get_latest(&self) -> Result<Sequence, Error> {
-        info!("Getting latest seq from db");
 
         let mut stmt = self
             .connection
@@ -138,6 +142,7 @@ impl FlumeViewSql {
 
         stmt.query_row(NO_PARAMS, |row| {
             let res: i64 = row.get_checked(0).unwrap_or(0);
+            trace!("got latest seq from db: {}", res);
             res as Sequence
         })
         .map_err(|err| err.into())
@@ -267,7 +272,7 @@ fn insert_message(
 fn insert_or_update_contacts(
     connection: &Connection,
     message: &SsbMessage,
-    message_key_id: i64,
+    _message_key_id: i64,
     is_decrypted: bool,
 ) {
     if message.value.content["type"].as_str() == Some("contact") {
@@ -356,26 +361,8 @@ fn find_or_create_key(conn: &Connection, key: &str) -> Result<i64, Error> {
         .map_err(|err| err.into())
 }
 
-fn create_author_index(conn: &Connection) -> Result<usize, Error> {
-    info!("Creating author index");
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS author_id_index on messages_raw (author_id)",
-        NO_PARAMS,
-    )
-    .map_err(|err| err.into())
-}
-
-fn create_root_index(conn: &Connection) -> Result<usize, Error> {
-    info!("Creating root index");
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS root_id_index on messages_raw (root_id)",
-        NO_PARAMS,
-    )
-    .map_err(|err| err.into())
-}
-
 fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
-    info!("Creating links index");
+    trace!("Creating links index");
     conn.execute(
         "CREATE INDEX IF NOT EXISTS links_id_index on links_raw (link_to_id, link_from_id)",
         NO_PARAMS,
@@ -383,17 +370,8 @@ fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
     .map_err(|err| err.into())
 }
 
-fn create_content_type_index(conn: &Connection) -> Result<usize, Error> {
-    info!("Creating content type index");
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS content_type_index on messages_raw (content_type)",
-        NO_PARAMS,
-    )
-    .map_err(|err| err.into())
-}
-
 fn create_contacts_author_id_index(conn: &Connection) -> Result<usize, Error> {
-    info!("Creating contacts author_id index");
+    trace!("Creating contacts author_id index");
     conn.execute(
         "CREATE INDEX IF NOT EXISTS contacts_raw_author_id_index on contacts_raw (author_id)",
         NO_PARAMS,
@@ -402,24 +380,8 @@ fn create_contacts_author_id_index(conn: &Connection) -> Result<usize, Error> {
 }
 
 
-fn create_tables(conn: &mut Connection) {
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS messages_raw (
-          flume_seq INTEGER PRIMARY KEY,
-          key_id INTEGER UNIQUE, 
-          seq INTEGER,
-          received_time REAL,
-          asserted_time REAL,
-          root_id INTEGER,
-          fork_id INTEGER,
-          author_id INTEGER,
-          content_type TEXT,
-          content JSON,
-          is_decrypted BOOLEAN
-        )",
-        NO_PARAMS,
-    )
-    .unwrap();
+fn create_tables(conn: &mut Connection) -> Result<(), Error> {
+    create_messages_tables(conn)?;
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS authors (
@@ -466,34 +428,6 @@ fn create_tables(conn: &mut Connection) {
     )
     .unwrap();
 
-    conn.execute(
-        "
-        CREATE VIEW IF NOT EXISTS messages AS
-        SELECT 
-        flume_seq,
-        key_id,
-        seq,
-        received_time,
-        asserted_time,
-        root_id,
-        fork_id,
-        author_id,
-        content,
-        content_type,
-        is_decrypted,
-        keys.key as key,
-        root_keys.key as root,
-        fork_keys.key as fork,
-        authors.author as author
-        FROM messages_raw 
-        JOIN keys ON keys.id=messages_raw.key_id
-        LEFT JOIN keys AS root_keys ON root_keys.id=messages_raw.root_id
-        LEFT JOIN keys AS fork_keys ON fork_keys.id=messages_raw.fork_id
-        JOIN authors ON authors.id=messages_raw.author_id
-        ",
-        NO_PARAMS,
-    )
-    .unwrap();
 
     conn.execute(
         "
@@ -508,15 +442,16 @@ fn create_tables(conn: &mut Connection) {
         NO_PARAMS,
     )
     .unwrap();
+
+    create_messages_views(conn)?;
+    Ok(())
 }
 
-fn create_indices(connection: &Connection) {
-    create_author_index(&connection)
-        .and_then(|_| create_links_to_index(&connection))
-        .and_then(|_| create_content_type_index(&connection))
-        .and_then(|_| create_root_index(&connection))
-        .and_then(|_| create_contacts_author_id_index(&connection))
-        .unwrap();
+fn create_indices(connection: &Connection) -> Result<(), Error> {
+    create_messages_indices(connection)?;
+    create_links_to_index(connection)?;
+    create_contacts_author_id_index(connection)?;
+    Ok(())
 }
 
 #[cfg(test)]
