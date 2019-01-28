@@ -457,7 +457,6 @@ fn create_indices(connection: &Connection) -> Result<(), Error> {
 #[cfg(test)]
 mod test {
     use flume_view_sql::*;
-    use flumedb::flume_view::*;
     use serde_json::*;
 
     #[test]
@@ -480,7 +479,7 @@ mod test {
         std::fs::remove_file(filename.clone())
             .or::<Result<()>>(Ok(()))
             .unwrap();
-        FlumeViewSql::new(filename, keys);
+        FlumeViewSql::new(filename, keys).unwrap();
         assert!(true)
     }
 
@@ -493,7 +492,7 @@ mod test {
             .or::<Result<()>>(Ok(()))
             .unwrap();
 
-        let mut view = FlumeViewSql::new(filename, keys);
+        let mut view = FlumeViewSql::new(filename, keys).unwrap();
         let jsn = r#####"{
   "key": "%KKPLj1tWfuVhCvgJz2hG/nIsVzmBRzUJaqHv+sb+n1c=.sha256",
   "value": {
@@ -538,7 +537,7 @@ mod test {
             .or::<Result<()>>(Ok(()))
             .unwrap();
 
-        let mut view = FlumeViewSql::new(filename, keys);
+        let mut view = FlumeViewSql::new(filename, keys).unwrap();
         view.check_db_integrity().unwrap();
     }
     #[test]
@@ -549,7 +548,7 @@ mod test {
             .or::<Result<()>>(Ok(()))
             .unwrap();
 
-        let mut view = FlumeViewSql::new(filename.clone(), keys);
+        let mut view = FlumeViewSql::new(filename.clone(), keys).unwrap();
 
         std::fs::write(filename, b"BANG").unwrap();
 
