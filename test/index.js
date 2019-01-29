@@ -1,42 +1,46 @@
 var test = require('tape')
 var Db = require('../')
 var { messages, links, keys } = Db.strings
-var { whereMessageType, whereNotMessageType } = Db.modifiers
+var { whereMessageIsNotType } = Db.modifiers
 
 var rimraf = require('rimraf')
 
 var secretKey = Buffer.from('')
 
+function createTestDb () {
+  return Db('/tmp/test.offset', '/tmp/test.sqlite', secretKey, '')
+}
+
 test('create', function (t) {
-  var db = Db('/tmp/test.offset', '/tmp/test.sqlite', secretKey)
+  var db = createTestDb()
   t.ok(db)
   t.end()
 })
 
 test('db has method getLatest ', function (t) {
-  var db = Db('/tmp/test.offset', '/tmp/test.sqlite', secretKey)
+  var db = createTestDb()
   t.equal(typeof (db.getLatest()), 'number')
   t.end()
 })
 
 test.skip('db has method query ', function (t) {
-  var db = Db('/tmp/test.offset', '/tmp/test.sqlite', secretKey)
+  var db = createTestDb()
   t.equal(typeof (db.query), 'function')
   t.end()
 })
 
 test('db has method process ', function (t) {
-  var db = Db('/tmp/test.offset', '/tmp/test.sqlite', secretKey)
+  var db = createTestDb()
   t.equal(typeof (db.process), 'function')
   t.end()
 })
 
 test('create throws when paths are not strings', function (t) {
   t.throws(function () {
-    Db(null, '', () => {})
+    Db(null, '', Buffer.from(''), '')
   })
   t.throws(function () {
-    Db('', null, () => {})
+    Db('', null, Buffer.from(''), '')
   })
   t.end()
 })
@@ -44,6 +48,13 @@ test('create throws when paths are not strings', function (t) {
 test('create throws when secretKey is not a buffer', function (t) {
   t.throws(function () {
     Db('', '')
+  })
+  t.end()
+})
+
+test('create throws when pub key is not a string', function (t) {
+  t.throws(function () {
+    Db('', '', Buffer.from(''))
   })
   t.end()
 })
@@ -56,7 +67,7 @@ test('processing the log in chunks works correctly', function (t) {
 
   var logPath = '/tmp/test_indexingg.sqlite'
   rimraf.sync(logPath)
-  var db = Db('/home/piet/.ssb/flume/log.offset', logPath, secretKey)
+  var db = Db('/home/piet/.ssb/flume/log.offset', logPath, secretKey, '')
 
   t.equals(db.getLatest(), 0)
 
@@ -73,7 +84,7 @@ test('processing the log in chunks works correctly', function (t) {
 test('can query even when view is behind log', function (t) {
   var logPath = '/tmp/test_query.sqlite'
   rimraf.sync(logPath)
-  var db = Db('/home/piet/.ssb/flume/log.offset', logPath, secretKey)
+  var db = Db('/home/piet/.ssb/flume/log.offset', logPath, secretKey, '')
 
   db.knex.select()
     .from(messages)
@@ -84,7 +95,7 @@ test('can query even when view is behind log', function (t) {
       return db.knex
         .select()
         .from(messages)
-        .modify(whereNotMessageType, 'post')
+        .modify(whereMessageIsNotType, 'post')
     })
     .then(function (res) {
       t.equal(res.length, 20)

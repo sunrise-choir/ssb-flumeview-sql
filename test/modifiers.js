@@ -22,7 +22,7 @@ function createTestDB (offsetPath) {
   var logPath = '/tmp/test_modifiers.sqlite'
   var secretKey = Buffer.from('')
   rimraf.sync(logPath)
-  var db = Db(offsetPath, logPath, secretKey)
+  var db = Db(offsetPath, logPath, secretKey, '')
 
   db.process({ chunkSize: numRows })
 
@@ -82,7 +82,7 @@ test('not private messages', function (t) {
     })
 })
 
-test.only('get some backlinks', function (t) {
+test.skip('get some backlinks', function (t) {
   var db = createTestDB()
   db.process(5000)
   db

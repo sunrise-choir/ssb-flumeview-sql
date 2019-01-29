@@ -68,7 +68,7 @@ fn create_connection(path: &str) -> Result<Connection, Error> {
 }
 
 impl FlumeViewSql {
-    pub fn new(path: &str, secret_keys: Vec<SecretKey>) -> Result<FlumeViewSql, Error> {
+    pub fn new(path: &str, secret_keys: Vec<SecretKey>, pub_key: &str) -> Result<FlumeViewSql, Error> {
         let mut connection = create_connection(path)?;
 
         if let Ok(false) = is_db_up_to_date(&connection) {
@@ -76,12 +76,13 @@ impl FlumeViewSql {
             std::fs::remove_file(path).unwrap();
 
             connection = create_connection(path)?;
-            create_migrations_tables(&connection)?;
-            set_db_version(&connection)?;
 
             create_tables(&mut connection)?;
             create_indices(&connection)?;
             create_views(&connection)?;
+
+            set_db_version(&connection)?;
+            set_author_that_is_me(&connection, pub_key)?;
         }
 
         set_pragmas(&mut connection);
@@ -263,6 +264,8 @@ fn set_pragmas(connection: &mut Connection) {
 }
 
 fn create_tables(connection: &mut Connection) -> Result<(), Error> {
+
+    create_migrations_tables(&connection)?;
     create_messages_tables(connection)?;
     create_authors_tables(connection)?;
     create_keys_tables(connection)?;
@@ -314,7 +317,7 @@ mod test {
         std::fs::remove_file(filename.clone())
             .or::<Result<()>>(Ok(()))
             .unwrap();
-        FlumeViewSql::new(filename, keys).unwrap();
+        FlumeViewSql::new(filename, keys, "").unwrap();
         assert!(true)
     }
 
@@ -327,7 +330,7 @@ mod test {
             .or::<Result<()>>(Ok(()))
             .unwrap();
 
-        let mut view = FlumeViewSql::new(filename, keys).unwrap();
+        let mut view = FlumeViewSql::new(filename, keys, "").unwrap();
         let jsn = r#####"{
   "key": "%KKPLj1tWfuVhCvgJz2hG/nIsVzmBRzUJaqHv+sb+n1c=.sha256",
   "value": {
@@ -372,7 +375,7 @@ mod test {
             .or::<Result<()>>(Ok(()))
             .unwrap();
 
-        let mut view = FlumeViewSql::new(filename, keys).unwrap();
+        let mut view = FlumeViewSql::new(filename, keys, "").unwrap();
         view.check_db_integrity().unwrap();
     }
     #[test]
@@ -383,7 +386,7 @@ mod test {
             .or::<Result<()>>(Ok(()))
             .unwrap();
 
-        let mut view = FlumeViewSql::new(filename.clone(), keys).unwrap();
+        let mut view = FlumeViewSql::new(filename.clone(), keys, "").unwrap();
 
         std::fs::write(filename, b"BANG").unwrap();
 

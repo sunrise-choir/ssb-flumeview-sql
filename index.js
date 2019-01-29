@@ -3,7 +3,7 @@
 var Knex = require('knex')
 var SqlView = require('./build/Release/binding.node')
 
-module.exports = function SsbDb (logPath, dbPath, secretKey) {
+module.exports = function SsbDb (logPath, dbPath, secretKey, pubKey) {
   if (typeof (logPath) !== 'string') {
     throw new TypeError('Expected logPath to be a string')
   }
@@ -12,6 +12,9 @@ module.exports = function SsbDb (logPath, dbPath, secretKey) {
   }
   if (!Buffer.isBuffer(secretKey)) {
     throw new TypeError('Expected secret key to be a buffer. This should be the secret key returned by ssb-keys.')
+  }
+  if (typeof (pubKey) !== 'string') {
+    throw new TypeError('Expected pubKey to be a string')
   }
 
   var knex = Knex({
