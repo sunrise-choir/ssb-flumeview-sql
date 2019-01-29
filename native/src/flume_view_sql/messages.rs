@@ -1,4 +1,49 @@
-use rusqlite::{Connection, NO_PARAMS, Error};
+use rusqlite::types::ToSql;
+use rusqlite::{Connection, Error, NO_PARAMS};
+use serde_json::Value;
+
+use flume_view_sql::*;
+
+pub fn insert_message(
+    connection: &Connection,
+    message: &SsbMessage,
+    seq: i64,
+    message_key_id: i64,
+    is_decrypted: bool,
+) -> Result<usize, Error> {
+    let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages_raw (flume_seq, key_id, seq, received_time, asserted_time, root_id, fork_id, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")?;
+
+    let root_key_id = match message.value.content["root"] {
+        Value::String(ref key) => {
+            let id = find_or_create_key(&connection, &key).unwrap();
+            Some(id)
+        }
+        _ => None,
+    };
+
+    let fork_key_id = match message.value.content["fork"] {
+        Value::String(ref key) => {
+            let id = find_or_create_key(&connection, &key).unwrap();
+            Some(id)
+        }
+        _ => None,
+    };
+
+    let author_id = find_or_create_author(&connection, &message.value.author)?;
+    insert_msg_stmt.execute(&[
+        &seq as &ToSql,
+        &message_key_id,
+        &message.value.sequence,
+        &message.timestamp,
+        &message.value.timestamp,
+        &root_key_id as &ToSql,
+        &fork_key_id as &ToSql,
+        &author_id,
+        &message.value.content["type"].as_str() as &ToSql,
+        &message.value.content as &ToSql,
+        &is_decrypted as &ToSql,
+    ])
+}
 
 pub fn create_messages_tables(connection: &mut Connection) -> Result<usize, Error> {
     trace!("Creating messages tables");
@@ -74,7 +119,6 @@ fn create_root_index(connection: &Connection) -> Result<usize, Error> {
     )
 }
 
-
 fn create_content_type_index(connection: &Connection) -> Result<usize, Error> {
     trace!("Creating content type index");
     connection.execute(
@@ -82,5 +126,3 @@ fn create_content_type_index(connection: &Connection) -> Result<usize, Error> {
         NO_PARAMS,
     )
 }
-
-

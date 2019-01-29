@@ -17,7 +17,6 @@ use ssb_sql_napi::FlumeViewSql;
 const NUM_ENTRIES: u32 = 100000;
 
 fn create_test_db(num_entries: usize, offset_filename: &str, db_filename: &str) -> FlumeViewSql {
-
     let keys = Vec::new();
     std::fs::remove_file(db_filename).unwrap_or(());
     let mut view = FlumeViewSql::new(db_filename, keys);
@@ -31,7 +30,6 @@ fn create_test_db(num_entries: usize, offset_filename: &str, db_filename: &str) 
 
     view.append_batch(buff);
     view
-
 }
 
 fn flume_view_sql_insert_piets_entire_log(c: &mut Criterion) {
@@ -115,7 +113,6 @@ fn all_messages_by_type(c: &mut Criterion) {
     let mut view = create_test_db(NUM_ENTRIES as usize, offset_filename, db_filename);
 
     c.bench_function("flumeview all messages by type", move |b| {
-
         b.iter(|| {
             let seqs = view.get_seqs_by_type("post").unwrap();
         })
@@ -130,7 +127,6 @@ fn all_messages_by_author(c: &mut Criterion) {
     let mut view = create_test_db(NUM_ENTRIES as usize, offset_filename, db_filename);
 
     c.bench_function("flumeview all messages by author", move |b| {
-
         b.iter(|| {
             let seqs = view.get_seqs_by_author(author_key).unwrap();
         })
@@ -142,10 +138,6 @@ criterion_group! {
     targets = flume_view_sql_insert_piets_entire_log_with_decryption, flume_view_sql_insert_piets_entire_log, flume_view_sql_insert
 }
 
-criterion_group!(
-    sql,
-    all_messages_by_type, all_messages_by_author 
-);
-
+criterion_group!(sql, all_messages_by_type, all_messages_by_author);
 
 criterion_main!(sql, sql_full_log);

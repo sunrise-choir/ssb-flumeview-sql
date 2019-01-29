@@ -9,15 +9,20 @@ use serde_json::Value;
 
 use private_box::SecretKey;
 
+mod authors;
+mod branches;
+mod contacts;
+mod keys;
+mod links;
 mod messages;
-use self::messages::{
-    create_messages_tables,
-    create_messages_views,
-    create_messages_indices
-};
+use self::authors::*;
+use self::contacts::*;
+use self::keys::*;
+use self::links::*;
+use self::messages::*;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct SsbValue {
+pub struct SsbValue {
     author: String,
     sequence: u32,
     timestamp: f64,
@@ -25,7 +30,7 @@ struct SsbValue {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct SsbMessage {
+pub struct SsbMessage {
     key: String,
     value: SsbValue,
     timestamp: f64,
@@ -57,8 +62,7 @@ impl FlumeViewSql {
         let flags: OpenFlags = OpenFlags::SQLITE_OPEN_READ_WRITE
             | OpenFlags::SQLITE_OPEN_CREATE
             | OpenFlags::SQLITE_OPEN_NO_MUTEX;
-        let mut connection =
-            Connection::open_with_flags(path, flags)?;
+        let mut connection = Connection::open_with_flags(path, flags)?;
 
         set_pragmas(&mut connection);
         create_tables(&mut connection)?;
@@ -135,7 +139,6 @@ impl FlumeViewSql {
     }
 
     pub fn get_latest(&self) -> Result<Sequence, Error> {
-
         let mut stmt = self
             .connection
             .prepare_cached("SELECT MAX(flume_seq) FROM messages_raw")?;
@@ -206,107 +209,6 @@ fn attempt_decryption(mut message: SsbMessage, secret_keys: &[SecretKey]) -> (bo
     (is_decrypted, message)
 }
 
-fn insert_links(connection: &Connection, message: &SsbMessage, message_key_id: i64) {
-    let mut insert_link_stmt = connection
-        .prepare_cached("INSERT INTO links_raw (link_from_id, link_to_id) VALUES (?, ?)")
-        .unwrap();
-
-    let mut links = Vec::new();
-    find_values_in_object_by_key(&message.value.content, "link", &mut links);
-
-    links
-        .iter()
-        .filter(|link| link.is_string())
-        .map(|link| link.as_str().unwrap())
-        .map(|link| find_or_create_key(&connection, link).unwrap())
-        .for_each(|link_id| {
-            insert_link_stmt
-                .execute(&[&message_key_id, &link_id])
-                .unwrap();
-        });
-}
-
-fn insert_message(
-    connection: &Connection,
-    message: &SsbMessage,
-    seq: i64,
-    message_key_id: i64,
-    is_decrypted: bool,
-) {
-    let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages_raw (flume_seq, key_id, seq, received_time, asserted_time, root_id, fork_id, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap();
-
-    let root_key_id = match message.value.content["root"] {
-        Value::String(ref key) => {
-            let id = find_or_create_key(&connection, &key).unwrap();
-            Some(id)
-        }
-        _ => None,
-    };
-
-    let fork_key_id = match message.value.content["fork"] {
-        Value::String(ref key) => {
-            let id = find_or_create_key(&connection, &key).unwrap();
-            Some(id)
-        }
-        _ => None,
-    };
-
-    let author_id = find_or_create_author(&connection, &message.value.author).unwrap();
-    insert_msg_stmt
-        .execute(&[
-            &seq as &ToSql,
-            &message_key_id,
-            &message.value.sequence,
-            &message.timestamp,
-            &message.value.timestamp,
-            &root_key_id as &ToSql,
-            &fork_key_id as &ToSql,
-            &author_id,
-            &message.value.content["type"].as_str() as &ToSql,
-            &message.value.content as &ToSql,
-            &is_decrypted as &ToSql,
-        ])
-        .unwrap();
-}
-
-fn insert_or_update_contacts(
-    connection: &Connection,
-    message: &SsbMessage,
-    _message_key_id: i64,
-    is_decrypted: bool,
-) {
-    if message.value.content["type"].as_str() == Some("contact") {
-        let is_blocking = message.value.content["blocking"].as_bool().unwrap_or(false);
-        let is_following = message.value.content["following"]
-            .as_bool()
-            .unwrap_or(false);
-        let state = if is_blocking {
-            -1
-        } else if is_following {
-            1
-        } else {
-            0
-        };
-
-        if let Value::String(contact) = &message.value.content["contact"] {
-            let author_id = find_or_create_author(&connection, &message.value.author).unwrap();
-            let mut insert_contacts_stmt = connection
-               .prepare_cached("REPLACE INTO contacts_raw (author_id, contact_author_id, state, is_decrypted) VALUES (?, ?, ?, ?)")
-               .unwrap();
-            let contact_author_id = find_or_create_author(&connection, contact).unwrap();
-
-            insert_contacts_stmt
-                .execute(&[
-                    &author_id,
-                    &contact_author_id,
-                    &state,
-                    &is_decrypted as &ToSql,
-                ])
-                .unwrap();
-        }
-    }
-}
-
 fn append_item(
     connection: &Connection,
     secret_keys: &[SecretKey],
@@ -326,93 +228,32 @@ fn append_item(
         seq as i64,
         message_key_id,
         is_decrypted,
-    );
+    )?;
     insert_or_update_contacts(&connection, &message, message_key_id, is_decrypted);
 
     Ok(())
 }
 
-fn set_pragmas(conn: &mut Connection) {
-    conn.execute("PRAGMA synchronous = OFF", NO_PARAMS).unwrap();
-    conn.execute("PRAGMA page_size = 8192", NO_PARAMS).unwrap();
+fn set_pragmas(connection: &mut Connection) {
+    connection
+        .execute("PRAGMA synchronous = OFF", NO_PARAMS)
+        .unwrap();
+    connection
+        .execute("PRAGMA page_size = 8192", NO_PARAMS)
+        .unwrap();
 }
 
-fn find_or_create_author(conn: &Connection, author: &str) -> Result<i64, Error> {
-    let mut stmt = conn.prepare_cached("SELECT id FROM authors WHERE author=?1")?;
+fn create_tables(connection: &mut Connection) -> Result<(), Error> {
+    create_messages_tables(connection)?;
+    create_authors_tables(connection)?;
+    create_keys_tables(connection)?;
+    create_links_tables(connection)?;
+    create_contacts_tables(connection)?;
+    //create_branches_tables(connection)?;
 
-    stmt.query_row(&[author], |row| row.get(0))
-        .or_else(|_| {
-            conn.prepare_cached("INSERT INTO authors (author) VALUES (?)")
-                .map(|mut stmt| stmt.execute(&[author]))
-                .map(|_| conn.last_insert_rowid())
-        })
-        .map_err(|err| err.into())
-}
-
-fn find_or_create_key(conn: &Connection, key: &str) -> Result<i64, Error> {
-    let mut stmt = conn.prepare_cached("SELECT id FROM keys WHERE key=?1")?;
-
-    stmt.query_row(&[key], |row| row.get(0))
-        .or_else(|_| {
-            conn.prepare_cached("INSERT INTO keys (key) VALUES (?)")
-                .map(|mut stmt| stmt.execute(&[key]))
-                .map(|_| conn.last_insert_rowid())
-        })
-        .map_err(|err| err.into())
-}
-
-fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
-    trace!("Creating links index");
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS links_id_index on links_raw (link_to_id, link_from_id)",
-        NO_PARAMS,
-    )
-    .map_err(|err| err.into())
-}
-
-fn create_contacts_author_id_index(conn: &Connection) -> Result<usize, Error> {
-    trace!("Creating contacts author_id index");
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS contacts_raw_author_id_index on contacts_raw (author_id)",
-        NO_PARAMS,
-    )
-    .map_err(|err| err.into())
-}
-
-
-fn create_tables(conn: &mut Connection) -> Result<(), Error> {
-    create_messages_tables(conn)?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS authors (
-          id INTEGER PRIMARY KEY,
-          author TEXT UNIQUE
-        )",
-        NO_PARAMS,
-    )
-    .unwrap();
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS keys (
-          id INTEGER PRIMARY KEY,
-          key TEXT UNIQUE
-        )",
-        NO_PARAMS,
-    )
-    .unwrap();
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS links_raw (
-          id INTEGER PRIMARY KEY,
-          link_from_id INTEGER,
-          link_to_id INTEGER
-        )",
-        NO_PARAMS,
-    )
-    .unwrap();
-
-    conn.execute(
-        "
+    connection
+        .execute(
+            "
         CREATE VIEW IF NOT EXISTS links AS
         SELECT 
         links_raw.id as id, 
@@ -424,33 +265,21 @@ fn create_tables(conn: &mut Connection) -> Result<(), Error> {
         JOIN keys ON keys.id=links_raw.link_from_id
         JOIN keys AS keys2 ON keys2.id=links_raw.link_to_id
         ",
-        NO_PARAMS,
-    )
-    .unwrap();
+            NO_PARAMS,
+        )
+        .unwrap();
 
-
-    conn.execute(
-        "
-    CREATE TABLE IF NOT EXISTS contacts_raw(
-        id INTEGER PRIMARY KEY,
-        author_id INTEGER,
-        contact_author_id INTEGER,
-        is_decrypted BOOLEAN,
-        state INTEGER
-    ) 
-    ",
-        NO_PARAMS,
-    )
-    .unwrap();
-
-    create_messages_views(conn)?;
+    create_messages_views(connection)?;
     Ok(())
 }
 
 fn create_indices(connection: &Connection) -> Result<(), Error> {
     create_messages_indices(connection)?;
-    create_links_to_index(connection)?;
-    create_contacts_author_id_index(connection)?;
+    create_links_indices(connection)?;
+    create_contacts_indices(connection)?;
+    create_keys_indices(connection)?;
+    //create_branches_indices(connection)?;
+    create_authors_indices(connection)?;
     Ok(())
 }
 

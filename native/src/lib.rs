@@ -21,12 +21,12 @@ use failure::Error;
 use node_napi::napi::*;
 use node_napi::napi_sys::*;
 use std::debug_assert;
-use std::os::raw::{c_void};
+use std::os::raw::c_void;
 use std::ptr::{null, null_mut};
 use std::slice;
 
+use flumedb::OffsetLogIter;
 use flumedb::Sequence;
-use flumedb::{OffsetLogIter};
 
 use private_box::SecretKey;
 
@@ -39,7 +39,7 @@ struct SsbQuery {
 }
 
 impl SsbQuery {
-    fn new(log_path: String, view_path: String, keys: Vec<SecretKey>) -> Result<SsbQuery, Error>{
+    fn new(log_path: String, view_path: String, keys: Vec<SecretKey>) -> Result<SsbQuery, Error> {
         let view = FlumeViewSql::new(&view_path, keys)?;
 
         Ok(SsbQuery { view, log_path })
@@ -183,16 +183,15 @@ pub extern "C" fn construct_view_class(env: napi_env, info: napi_callback_info) 
                     Some(finalize_view),
                     finalize_hint,
                     &mut wrapped_ref,
-                    )
+                )
             };
 
             debug_assert!(status == napi_status_napi_ok);
-        },
+        }
         Err(err) => {
             throw_error(env, err);
         }
     }
-
 
     this
 }
