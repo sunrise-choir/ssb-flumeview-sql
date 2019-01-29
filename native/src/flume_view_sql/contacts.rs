@@ -57,14 +57,21 @@ pub fn insert_or_update_contacts(
 }
 
 pub fn create_contacts_indices(connection: &Connection) -> Result<usize, Error> {
-    create_contacts_author_id_index(connection)
+    create_contacts_author_id_index(connection)?;
+    create_contacts_state_index(connection)
 }
 
+fn create_contacts_state_index(conn: &Connection) -> Result<usize, Error> {
+    trace!("Creating contacts state index");
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS contacts_raw_state_index on contacts_raw (state)",
+        NO_PARAMS,
+    )
+}
 fn create_contacts_author_id_index(conn: &Connection) -> Result<usize, Error> {
     trace!("Creating contacts author_id index");
     conn.execute(
         "CREATE INDEX IF NOT EXISTS contacts_raw_author_id_index on contacts_raw (author_id)",
         NO_PARAMS,
     )
-    .map_err(|err| err.into())
 }

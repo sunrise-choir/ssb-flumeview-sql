@@ -11,8 +11,11 @@ pub fn insert_message(
     message_key_id: i64,
     is_decrypted: bool,
 ) -> Result<usize, Error> {
+    trace!("prepare stmt");
     let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages_raw (flume_seq, key_id, seq, received_time, asserted_time, root_id, fork_id, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")?;
 
+
+    trace!("get root key id");
     let root_key_id = match message.value.content["root"] {
         Value::String(ref key) => {
             let id = find_or_create_key(&connection, &key).unwrap();
@@ -21,6 +24,7 @@ pub fn insert_message(
         _ => None,
     };
 
+    trace!("get fork key id");
     let fork_key_id = match message.value.content["fork"] {
         Value::String(ref key) => {
             let id = find_or_create_key(&connection, &key).unwrap();
@@ -29,7 +33,10 @@ pub fn insert_message(
         _ => None,
     };
 
+    trace!("find or create author");
     let author_id = find_or_create_author(&connection, &message.value.author)?;
+
+    trace!("insert message");
     insert_msg_stmt.execute(&[
         &seq as &ToSql,
         &message_key_id,
@@ -65,7 +72,7 @@ pub fn create_messages_tables(connection: &mut Connection) -> Result<usize, Erro
     )
 }
 
-pub fn create_messages_views(connection: &mut Connection) -> Result<usize, Error> {
+pub fn create_messages_views(connection: &Connection) -> Result<usize, Error> {
     trace!("Creating messages views");
     connection.execute(
         "

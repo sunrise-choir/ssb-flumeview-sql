@@ -2,6 +2,10 @@
 extern crate criterion;
 use criterion::Criterion;
 
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+
 extern crate base64;
 extern crate flumedb;
 extern crate private_box;
@@ -14,12 +18,13 @@ use flumedb::offset_log::OffsetLogIter;
 use private_box::SecretKey;
 use ssb_sql_napi::FlumeViewSql;
 
+
 const NUM_ENTRIES: u32 = 100000;
 
 fn create_test_db(num_entries: usize, offset_filename: &str, db_filename: &str) -> FlumeViewSql {
     let keys = Vec::new();
     std::fs::remove_file(db_filename).unwrap_or(());
-    let mut view = FlumeViewSql::new(db_filename, keys);
+    let mut view = FlumeViewSql::new(db_filename, keys).unwrap();
 
     let file = std::fs::File::open(offset_filename.to_string()).unwrap();
 
@@ -34,13 +39,13 @@ fn create_test_db(num_entries: usize, offset_filename: &str, db_filename: &str) 
 
 fn flume_view_sql_insert_piets_entire_log(c: &mut Criterion) {
     let offset_filename = "/home/piet/.ssb/flume/log.offset";
-    let db_filename = "/tmp/test.sqlite3";
+    let db_filename = "/tmp/test_entire_log.sqlite3";
 
     c.bench_function("flume view sql insert piets entire log", move |b| {
         b.iter(|| {
             let keys = Vec::new();
             std::fs::remove_file(db_filename.clone()).unwrap_or(());
-            let mut view = FlumeViewSql::new(db_filename, keys);
+            let mut view = FlumeViewSql::new(db_filename, keys).unwrap();
 
             let file = std::fs::File::open(offset_filename.to_string()).unwrap();
             let buff: Vec<_> = OffsetLogIter::<u32, std::fs::File>::new(file)
@@ -53,6 +58,7 @@ fn flume_view_sql_insert_piets_entire_log(c: &mut Criterion) {
 }
 
 fn flume_view_sql_insert_piets_entire_log_with_decryption(c: &mut Criterion) {
+    env_logger::init();
     let offset_filename = "/home/piet/.ssb/flume/log.offset";
     let db_filename = "/tmp/test_private.sqlite3";
     let secret_str = std::env::vars()
@@ -69,7 +75,7 @@ fn flume_view_sql_insert_piets_entire_log_with_decryption(c: &mut Criterion) {
                 let key = SecretKey::from_slice(&secret_bytes).unwrap();
                 let keys = vec![key];
                 std::fs::remove_file(db_filename.clone()).unwrap_or(());
-                let mut view = FlumeViewSql::new(db_filename, keys);
+                let mut view = FlumeViewSql::new(db_filename, keys).unwrap();
 
                 let file = std::fs::File::open(offset_filename.to_string()).unwrap();
                 let buff: Vec<_> = OffsetLogIter::<u32, std::fs::File>::new(file)
@@ -84,13 +90,13 @@ fn flume_view_sql_insert_piets_entire_log_with_decryption(c: &mut Criterion) {
 
 fn flume_view_sql_insert(c: &mut Criterion) {
     let offset_filename = "/home/piet/.ssb/flume/log.offset";
-    let db_filename = "/tmp/test.sqlite3";
+    let db_filename = "/tmp/test_inserts.sqlite3";
 
     c.bench_function("flumeview sql insert", move |b| {
         b.iter(|| {
             let keys = Vec::new();
             std::fs::remove_file(db_filename.clone()).unwrap_or(());
-            let mut view = FlumeViewSql::new(db_filename, keys);
+            let mut view = FlumeViewSql::new(db_filename, keys).unwrap();
 
             let file = std::fs::File::open(offset_filename.to_string()).unwrap();
 
@@ -108,7 +114,7 @@ fn flume_view_sql_insert(c: &mut Criterion) {
 
 fn all_messages_by_type(c: &mut Criterion) {
     let offset_filename = "/home/piet/.ssb/flume/log.offset";
-    let db_filename = "/tmp/test.sqlite3";
+    let db_filename = "/tmp/test_messages_by_type.sqlite3";
 
     let mut view = create_test_db(NUM_ENTRIES as usize, offset_filename, db_filename);
 
@@ -121,7 +127,7 @@ fn all_messages_by_type(c: &mut Criterion) {
 
 fn all_messages_by_author(c: &mut Criterion) {
     let offset_filename = "/home/piet/.ssb/flume/log.offset";
-    let db_filename = "/tmp/test.sqlite3";
+    let db_filename = "/tmp/test_messages_by_author.sqlite3";
     let author_key = "@U5GvOKP/YUza9k53DSXxT0mk3PIrnyAmessvNfZl5E0=.ed25519";
 
     let mut view = create_test_db(NUM_ENTRIES as usize, offset_filename, db_filename);
@@ -140,4 +146,4 @@ criterion_group! {
 
 criterion_group!(sql, all_messages_by_type, all_messages_by_author);
 
-criterion_main!(sql, sql_full_log);
+criterion_main!(sql_full_log);

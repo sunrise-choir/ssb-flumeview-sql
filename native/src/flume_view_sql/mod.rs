@@ -20,6 +20,7 @@ use self::contacts::*;
 use self::keys::*;
 use self::links::*;
 use self::messages::*;
+use self::branches::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SsbValue {
@@ -49,7 +50,7 @@ pub struct FlumeViewSql {
 
 impl FlumeView for FlumeViewSql {
     fn append(&mut self, seq: Sequence, item: &[u8]) {
-        append_item(&self.connection, &self.secret_keys, seq, item).unwrap()
+        append_item(&self.connection, &self.secret_keys, seq, item ).unwrap()
     }
     fn latest(&self) -> Sequence {
         self.get_latest().unwrap()
@@ -67,6 +68,7 @@ impl FlumeViewSql {
         set_pragmas(&mut connection);
         create_tables(&mut connection)?;
         create_indices(&connection)?;
+        create_views(&connection)?;
 
         Ok(FlumeViewSql {
             connection,
@@ -118,7 +120,7 @@ impl FlumeViewSql {
         let tx = self.connection.transaction().unwrap();
 
         for item in items {
-            append_item(&tx, &self.secret_keys, item.0, &item.1).unwrap();
+            append_item(&tx, &self.secret_keys, item.0, &item.1 ).unwrap();
         }
 
         tx.commit().unwrap();
@@ -221,13 +223,13 @@ fn append_item(
 
     let message_key_id = find_or_create_key(&connection, &message.key).unwrap();
 
-    insert_links(connection, &message, message_key_id);
+    insert_links(connection, &message, message_key_id );
     insert_message(
         connection,
         &message,
         seq as i64,
         message_key_id,
-        is_decrypted,
+        is_decrypted
     )?;
     insert_or_update_contacts(&connection, &message, message_key_id, is_decrypted);
 
@@ -249,27 +251,14 @@ fn create_tables(connection: &mut Connection) -> Result<(), Error> {
     create_keys_tables(connection)?;
     create_links_tables(connection)?;
     create_contacts_tables(connection)?;
-    //create_branches_tables(connection)?;
+    create_branches_tables(connection)?;
 
-    connection
-        .execute(
-            "
-        CREATE VIEW IF NOT EXISTS links AS
-        SELECT 
-        links_raw.id as id, 
-        links_raw.link_from_id as link_from_id, 
-        links_raw.link_to_id as link_to_id, 
-        keys.key as link_from, 
-        keys2.key as link_to
-        FROM links_raw 
-        JOIN keys ON keys.id=links_raw.link_from_id
-        JOIN keys AS keys2 ON keys2.id=links_raw.link_to_id
-        ",
-            NO_PARAMS,
-        )
-        .unwrap();
+    Ok(())
+}
 
+fn create_views(connection: &Connection) -> Result<(), Error> {
     create_messages_views(connection)?;
+    create_links_views(connection)?;
     Ok(())
 }
 
@@ -278,7 +267,7 @@ fn create_indices(connection: &Connection) -> Result<(), Error> {
     create_links_indices(connection)?;
     create_contacts_indices(connection)?;
     create_keys_indices(connection)?;
-    //create_branches_indices(connection)?;
+    create_branches_indices(connection)?;
     create_authors_indices(connection)?;
     Ok(())
 }
