@@ -15,12 +15,14 @@ mod contacts;
 mod keys;
 mod links;
 mod messages;
+mod migrations;
 use self::authors::*;
 use self::branches::*;
 use self::contacts::*;
 use self::keys::*;
 use self::links::*;
 use self::messages::*;
+use self::migrations::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SsbValue {
@@ -59,13 +61,14 @@ impl FlumeView for FlumeViewSql {
 
 impl FlumeViewSql {
     pub fn new(path: &str, secret_keys: Vec<SecretKey>) -> Result<FlumeViewSql, Error> {
-        //let mut connection = Connection::open(path).expect("unable to open sqlite connection");
         let flags: OpenFlags = OpenFlags::SQLITE_OPEN_READ_WRITE
             | OpenFlags::SQLITE_OPEN_CREATE
             | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+
         let mut connection = Connection::open_with_flags(path, flags)?;
 
         set_pragmas(&mut connection);
+
         create_tables(&mut connection)?;
         create_indices(&connection)?;
         create_views(&connection)?;

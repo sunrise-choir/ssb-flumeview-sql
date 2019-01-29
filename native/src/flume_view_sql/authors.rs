@@ -14,11 +14,12 @@ pub fn find_or_create_author(connection: &Connection, author: &str) -> Result<i6
 }
 
 pub fn create_authors_tables(connection: &mut Connection) -> Result<usize, Error> {
-    trace!("Creating messages tables");
+    trace!("Creating authors tables");
     connection.execute(
         "CREATE TABLE IF NOT EXISTS authors (
           id INTEGER PRIMARY KEY,
-          author TEXT UNIQUE
+          author TEXT UNIQUE,
+          is_me BOOLEAN 
         )",
         NO_PARAMS,
     )
