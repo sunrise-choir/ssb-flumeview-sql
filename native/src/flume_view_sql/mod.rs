@@ -59,19 +59,32 @@ impl FlumeView for FlumeViewSql {
     }
 }
 
+fn create_connection(path: &str) -> Result<Connection, Error> {
+    let flags: OpenFlags = OpenFlags::SQLITE_OPEN_READ_WRITE
+        | OpenFlags::SQLITE_OPEN_CREATE
+        | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+
+    Connection::open_with_flags(path, flags).map_err(|err| err.into())
+}
+
 impl FlumeViewSql {
     pub fn new(path: &str, secret_keys: Vec<SecretKey>) -> Result<FlumeViewSql, Error> {
-        let flags: OpenFlags = OpenFlags::SQLITE_OPEN_READ_WRITE
-            | OpenFlags::SQLITE_OPEN_CREATE
-            | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+        let mut connection = create_connection(path)?;
 
-        let mut connection = Connection::open_with_flags(path, flags)?;
+        if let Ok(false) = is_db_up_to_date(&connection) {
+            info!("sqlite db is out of date. Deleting db and it will be rebuilt.");
+            std::fs::remove_file(path).unwrap();
+
+            connection = create_connection(path)?;
+            create_migrations_tables(&connection)?;
+            set_db_version(&connection)?;
+
+            create_tables(&mut connection)?;
+            create_indices(&connection)?;
+            create_views(&connection)?;
+        }
 
         set_pragmas(&mut connection);
-
-        create_tables(&mut connection)?;
-        create_indices(&connection)?;
-        create_views(&connection)?;
 
         Ok(FlumeViewSql {
             connection,
