@@ -14,7 +14,6 @@ pub fn insert_message(
     trace!("prepare stmt");
     let mut insert_msg_stmt = connection.prepare_cached("INSERT INTO messages_raw (flume_seq, key_id, seq, received_time, asserted_time, root_id, fork_id, author_id, content_type, content, is_decrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")?;
 
-
     trace!("get root key id");
     let root_key_id = match message.value.content["root"] {
         Value::String(ref key) => {

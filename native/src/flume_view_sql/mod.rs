@@ -16,11 +16,11 @@ mod keys;
 mod links;
 mod messages;
 use self::authors::*;
+use self::branches::*;
 use self::contacts::*;
 use self::keys::*;
 use self::links::*;
 use self::messages::*;
-use self::branches::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SsbValue {
@@ -50,7 +50,7 @@ pub struct FlumeViewSql {
 
 impl FlumeView for FlumeViewSql {
     fn append(&mut self, seq: Sequence, item: &[u8]) {
-        append_item(&self.connection, &self.secret_keys, seq, item ).unwrap()
+        append_item(&self.connection, &self.secret_keys, seq, item).unwrap()
     }
     fn latest(&self) -> Sequence {
         self.get_latest().unwrap()
@@ -120,7 +120,7 @@ impl FlumeViewSql {
         let tx = self.connection.transaction().unwrap();
 
         for item in items {
-            append_item(&tx, &self.secret_keys, item.0, &item.1 ).unwrap();
+            append_item(&tx, &self.secret_keys, item.0, &item.1).unwrap();
         }
 
         tx.commit().unwrap();
@@ -223,13 +223,14 @@ fn append_item(
 
     let message_key_id = find_or_create_key(&connection, &message.key).unwrap();
 
-    insert_links(connection, &message, message_key_id );
+    insert_links(connection, &message, message_key_id);
+    insert_branches(connection, &message, message_key_id);
     insert_message(
         connection,
         &message,
         seq as i64,
         message_key_id,
-        is_decrypted
+        is_decrypted,
     )?;
     insert_or_update_contacts(&connection, &message, message_key_id, is_decrypted);
 

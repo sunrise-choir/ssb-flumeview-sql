@@ -15,9 +15,8 @@ pub fn create_links_tables(connection: &Connection) -> Result<usize, Error> {
 }
 
 pub fn create_links_views(connection: &Connection) -> Result<usize, Error> {
-    connection
-        .execute(
-            "
+    connection.execute(
+        "
         CREATE VIEW IF NOT EXISTS links AS
         SELECT 
         links_raw.id as id, 
@@ -29,8 +28,8 @@ pub fn create_links_views(connection: &Connection) -> Result<usize, Error> {
         JOIN keys ON keys.id=links_raw.link_from_key_id
         JOIN keys AS keys2 ON keys2.id=links_raw.link_to_key_id
         ",
-            NO_PARAMS,
-        )
+        NO_PARAMS,
+    )
 }
 
 pub fn insert_links(connection: &Connection, message: &SsbMessage, message_key_id: i64) {

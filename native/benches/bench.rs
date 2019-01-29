@@ -18,7 +18,6 @@ use flumedb::offset_log::OffsetLogIter;
 use private_box::SecretKey;
 use ssb_sql_napi::FlumeViewSql;
 
-
 const NUM_ENTRIES: u32 = 100000;
 
 fn create_test_db(num_entries: usize, offset_filename: &str, db_filename: &str) -> FlumeViewSql {
