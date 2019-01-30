@@ -210,15 +210,18 @@ fn attempt_decryption(mut message: SsbMessage, secret_keys: &[SecretKey]) -> (bo
 
             let bytes = decode(strrr).unwrap();
 
-            message.value.content = secret_keys
-                .get(0)
-                .ok_or(())
-                .and_then(|key| private_box::decrypt(&bytes, key))
-                .and_then(|data| {
-                    is_decrypted = true;
-                    serde_json::from_slice(&data).map_err(|_| ())
-                })
-                .unwrap_or(Value::Null); //If we can't decrypt it, throw it away.
+            for secret_key in secret_keys {
+                message.value.content = private_box::decrypt(&bytes, secret_key)
+                    .and_then(|data| {
+                        is_decrypted = true;
+                        serde_json::from_slice(&data).map_err(|_| ())
+                    })
+                    .unwrap_or(Value::Null); //If we can't decrypt it, throw it away.
+
+                if is_decrypted {
+                    break;
+                }
+            }
 
             message
         }
