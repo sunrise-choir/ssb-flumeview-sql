@@ -132,7 +132,7 @@ impl FlumeViewSql {
         Ok(seqs)
     }
 
-    pub fn append_batch(&mut self, items: Vec<(Sequence, Vec<u8>)>) {
+    pub fn append_batch(&mut self, items: &[(Sequence, Vec<u8>)]) {
         trace!("Start batch append");
         let tx = self.connection.transaction().unwrap();
 
@@ -171,13 +171,13 @@ impl FlumeViewSql {
     }
 }
 
-fn find_values_in_object_by_key(
-    obj: &serde_json::Value,
+fn find_values_in_object_by_key<'a>(
+    obj: &'a serde_json::Value,
     key: &str,
-    values: &mut Vec<serde_json::Value>,
+    values: &mut Vec<&'a serde_json::Value>,
 ) {
     match obj.get(key) {
-        Some(val) => values.push(val.clone()),
+        Some(val) => values.push(val),
         _ => (),
     };
 
@@ -259,7 +259,7 @@ fn set_pragmas(connection: &Connection) {
         .execute("PRAGMA synchronous = OFF", NO_PARAMS)
         .unwrap();
     connection
-        .execute("PRAGMA page_size = 8192", NO_PARAMS)
+        .execute("PRAGMA page_size = 4096", NO_PARAMS)
         .unwrap();
 }
 

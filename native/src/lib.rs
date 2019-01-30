@@ -5,6 +5,8 @@ extern crate failure;
 #[macro_use]
 extern crate log;
 
+extern crate itertools;
+
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -24,6 +26,7 @@ use std::debug_assert;
 use std::os::raw::c_void;
 use std::ptr::{null, null_mut};
 use std::slice;
+use itertools::Itertools;
 
 use flumedb::OffsetLogIter;
 use flumedb::Sequence;
@@ -66,13 +69,16 @@ impl SsbQuery {
             n @ _ => n as usize,
         };
 
-        let buff: Vec<_> = OffsetLogIter::<u32, std::fs::File>::with_starting_offset(file, latest)
+        OffsetLogIter::<u32, std::fs::File>::with_starting_offset(file, latest)
             .skip(num_to_skip)
             .take(items_to_take)
             .map(|data| (data.id + latest, data.data_buffer)) //TODO log_latest might not be the right thing
-            .collect();
+            .chunks(1000)
+            .into_iter()
+            .for_each(|chunk|{
+                self.view.append_batch(&chunk.collect_vec());
+            })
 
-        self.view.append_batch(buff);
     }
 }
 

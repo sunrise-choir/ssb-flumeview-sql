@@ -10,6 +10,7 @@ extern crate base64;
 extern crate flumedb;
 extern crate private_box;
 extern crate ssb_sql_napi;
+extern crate itertools;
 
 use base64::{decode, encode};
 use flumedb::flume_log::FlumeLog;
@@ -17,22 +18,26 @@ use flumedb::offset_log::OffsetCodec;
 use flumedb::offset_log::OffsetLogIter;
 use private_box::SecretKey;
 use ssb_sql_napi::FlumeViewSql;
+use itertools::Itertools;
 
 const NUM_ENTRIES: u32 = 100000;
 
 fn create_test_db(num_entries: usize, offset_filename: &str, db_filename: &str) -> FlumeViewSql {
     let keys = Vec::new();
     std::fs::remove_file(db_filename).unwrap_or(());
-    let mut view = FlumeViewSql::new(db_filename, keys).unwrap();
+    let mut view = FlumeViewSql::new(db_filename, keys, "").unwrap();
 
     let file = std::fs::File::open(offset_filename.to_string()).unwrap();
 
-    let buff: Vec<_> = OffsetLogIter::<u32, std::fs::File>::new(file)
+    OffsetLogIter::<u32, std::fs::File>::new(file)
         .take(num_entries)
         .map(|data| (data.id, data.data_buffer))
-        .collect();
+                    .chunks(NUM_ENTRIES as usize)
+                    .into_iter()
+                    .for_each(|chunk|{
+                        view.append_batch(&chunk.collect_vec());
+                    });
 
-    view.append_batch(buff);
     view
 }
 
@@ -44,14 +49,17 @@ fn flume_view_sql_insert_piets_entire_log(c: &mut Criterion) {
         b.iter(|| {
             let keys = Vec::new();
             std::fs::remove_file(db_filename.clone()).unwrap_or(());
-            let mut view = FlumeViewSql::new(db_filename, keys).unwrap();
+            let mut view = FlumeViewSql::new(db_filename, keys, "").unwrap();
 
             let file = std::fs::File::open(offset_filename.to_string()).unwrap();
-            let buff: Vec<_> = OffsetLogIter::<u32, std::fs::File>::new(file)
+            OffsetLogIter::<u32, std::fs::File>::new(file)
                 .map(|data| (data.id, data.data_buffer))
-                .collect();
+                    .chunks(NUM_ENTRIES as usize)
+                    .into_iter()
+                    .for_each(|chunk|{
+                        view.append_batch(&chunk.collect_vec());
+                    });
 
-            view.append_batch(buff);
         })
     });
 }
@@ -74,14 +82,17 @@ fn flume_view_sql_insert_piets_entire_log_with_decryption(c: &mut Criterion) {
                 let key = SecretKey::from_slice(&secret_bytes).unwrap();
                 let keys = vec![key];
                 std::fs::remove_file(db_filename.clone()).unwrap_or(());
-                let mut view = FlumeViewSql::new(db_filename, keys).unwrap();
+                let mut view = FlumeViewSql::new(db_filename, keys, "").unwrap();
 
                 let file = std::fs::File::open(offset_filename.to_string()).unwrap();
-                let buff: Vec<_> = OffsetLogIter::<u32, std::fs::File>::new(file)
+                OffsetLogIter::<u32, std::fs::File>::new(file)
                     .map(|data| (data.id, data.data_buffer))
-                    .collect();
+                    .chunks(NUM_ENTRIES as usize)
+                    .into_iter()
+                    .for_each(|chunk|{
+                        view.append_batch(&chunk.collect_vec());
+                    });
 
-                view.append_batch(buff);
             })
         },
     );
@@ -95,18 +106,20 @@ fn flume_view_sql_insert(c: &mut Criterion) {
         b.iter(|| {
             let keys = Vec::new();
             std::fs::remove_file(db_filename.clone()).unwrap_or(());
-            let mut view = FlumeViewSql::new(db_filename, keys).unwrap();
+            let mut view = FlumeViewSql::new(db_filename, keys, "").unwrap();
 
             let file = std::fs::File::open(offset_filename.to_string()).unwrap();
 
             //TODO: this is ok for a benchmark but uses lots of memory.
             //Better would be to create a transaction and then append in a for_each loop.
-            let buff: Vec<_> = OffsetLogIter::<u32, std::fs::File>::new(file)
+            OffsetLogIter::<u32, std::fs::File>::new(file)
                 .take(NUM_ENTRIES as usize)
                 .map(|data| (data.id, data.data_buffer))
-                .collect();
-
-            view.append_batch(buff);
+                    .chunks(NUM_ENTRIES as usize)
+                    .into_iter()
+                    .for_each(|chunk|{
+                        view.append_batch(&chunk.collect_vec());
+                    });
         })
     });
 }
@@ -140,9 +153,9 @@ fn all_messages_by_author(c: &mut Criterion) {
 criterion_group! {
     name = sql_full_log;
     config = Criterion::default().sample_size(2);
-    targets = flume_view_sql_insert_piets_entire_log_with_decryption, flume_view_sql_insert_piets_entire_log, flume_view_sql_insert
+    targets = flume_view_sql_insert, flume_view_sql_insert_piets_entire_log_with_decryption, flume_view_sql_insert_piets_entire_log 
 }
 
 criterion_group!(sql, all_messages_by_type, all_messages_by_author);
 
-criterion_main!(sql_full_log);
+criterion_main!(sql_full_log, sql);
