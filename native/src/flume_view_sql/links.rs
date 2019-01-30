@@ -32,18 +32,16 @@ pub fn create_links_views(connection: &Connection) -> Result<usize, Error> {
     )
 }
 
-pub fn insert_links(connection: &Connection, message: &SsbMessage, message_key_id: i64) {
+pub fn insert_links(connection: &Connection, links: &[&serde_json::Value], message_key_id: i64) {
     let mut insert_link_stmt = connection
         .prepare_cached("INSERT INTO links_raw (link_from_key_id, link_to_key_id) VALUES (?, ?)")
         .unwrap();
-
-    let mut links = Vec::new();
-    find_values_in_object_by_key(&message.value.content, "link", &mut links);
 
     links
         .iter()
         .filter(|link| link.is_string())
         .map(|link| link.as_str().unwrap())
+        .filter(|link| link.starts_with("%"))
         .map(|link| find_or_create_key(&connection, link).unwrap())
         .for_each(|link_id| {
             insert_link_stmt

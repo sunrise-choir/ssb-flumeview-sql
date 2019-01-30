@@ -15,6 +15,7 @@ mod contacts;
 mod keys;
 mod links;
 mod messages;
+mod mentions;
 mod migrations;
 use self::authors::*;
 use self::branches::*;
@@ -23,6 +24,7 @@ use self::keys::*;
 use self::links::*;
 use self::messages::*;
 use self::migrations::*;
+use self::mentions::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SsbValue {
@@ -171,6 +173,7 @@ impl FlumeViewSql {
     }
 }
 
+
 fn find_values_in_object_by_key<'a>(
     obj: &'a serde_json::Value,
     key: &str,
@@ -243,7 +246,12 @@ fn append_item(
 
     let message_key_id = find_or_create_key(&connection, &message.key).unwrap();
 
-    insert_links(connection, &message, message_key_id);
+    let mut links = Vec::new();
+    find_values_in_object_by_key(&message.value.content, "link", &mut links);
+
+    insert_links(connection, links.as_slice(), message_key_id);
+    insert_mentions(connection, links.as_slice(), message_key_id);
+
     insert_branches(connection, &message, message_key_id);
     insert_message(
         connection,
@@ -275,6 +283,7 @@ fn create_tables(connection: &Connection) -> Result<(), Error> {
     create_links_tables(connection)?;
     create_contacts_tables(connection)?;
     create_branches_tables(connection)?;
+    create_mentions_tables(connection)?;
 
     Ok(())
 }
@@ -282,6 +291,7 @@ fn create_tables(connection: &Connection) -> Result<(), Error> {
 fn create_views(connection: &Connection) -> Result<(), Error> {
     create_messages_views(connection)?;
     create_links_views(connection)?;
+    create_mentions_views(connection)?;
     Ok(())
 }
 
@@ -292,6 +302,7 @@ fn create_indices(connection: &Connection) -> Result<(), Error> {
     create_keys_indices(connection)?;
     create_branches_indices(connection)?;
     create_authors_indices(connection)?;
+    create_mentions_indices(connection)?;
     Ok(())
 }
 
