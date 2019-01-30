@@ -13,7 +13,7 @@ pub fn find_or_create_author(connection: &Connection, author: &str) -> Result<i6
         .map_err(|err| err.into())
 }
 
-pub fn create_authors_tables(connection: &mut Connection) -> Result<usize, Error> {
+pub fn create_authors_tables(connection: &Connection) -> Result<usize, Error> {
     trace!("Creating authors tables");
     connection.execute(
         "CREATE TABLE IF NOT EXISTS authors (

@@ -51,7 +51,7 @@ pub fn insert_message(
     ])
 }
 
-pub fn create_messages_tables(connection: &mut Connection) -> Result<usize, Error> {
+pub fn create_messages_tables(connection: &Connection) -> Result<usize, Error> {
     trace!("Creating messages tables");
     connection.execute(
         "CREATE TABLE IF NOT EXISTS messages_raw (

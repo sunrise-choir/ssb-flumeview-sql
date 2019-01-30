@@ -2,7 +2,7 @@ use flume_view_sql::*;
 use rusqlite::{Connection, Error, NO_PARAMS};
 use serde_json::Value;
 
-pub fn create_contacts_tables(connection: &mut Connection) -> Result<usize, Error> {
+pub fn create_contacts_tables(connection: &Connection) -> Result<usize, Error> {
     trace!("Creating contacts tables");
     connection.execute(
         "

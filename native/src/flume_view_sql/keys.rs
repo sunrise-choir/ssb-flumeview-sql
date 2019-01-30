@@ -13,7 +13,7 @@ pub fn find_or_create_key(connection: &Connection, key: &str) -> Result<i64, Err
         .map_err(|err| err.into())
 }
 
-pub fn create_keys_tables(connection: &mut Connection) -> Result<usize, Error> {
+pub fn create_keys_tables(connection: &Connection) -> Result<usize, Error> {
     trace!("Creating messages tables");
     connection.execute(
         "CREATE TABLE IF NOT EXISTS keys (

@@ -77,7 +77,7 @@ impl FlumeViewSql {
 
             connection = create_connection(path)?;
 
-            create_tables(&mut connection)?;
+            create_tables(&connection)?;
             create_indices(&connection)?;
             create_views(&connection)?;
 
@@ -85,7 +85,7 @@ impl FlumeViewSql {
             set_author_that_is_me(&connection, pub_key)?;
         }
 
-        set_pragmas(&mut connection);
+        set_pragmas(&connection);
 
         Ok(FlumeViewSql {
             connection,
@@ -254,7 +254,7 @@ fn append_item(
     Ok(())
 }
 
-fn set_pragmas(connection: &mut Connection) {
+fn set_pragmas(connection: &Connection) {
     connection
         .execute("PRAGMA synchronous = OFF", NO_PARAMS)
         .unwrap();
@@ -263,9 +263,9 @@ fn set_pragmas(connection: &mut Connection) {
         .unwrap();
 }
 
-fn create_tables(connection: &mut Connection) -> Result<(), Error> {
+fn create_tables(connection: &Connection) -> Result<(), Error> {
 
-    create_migrations_tables(&connection)?;
+    create_migrations_tables(connection)?;
     create_messages_tables(connection)?;
     create_authors_tables(connection)?;
     create_keys_tables(connection)?;
