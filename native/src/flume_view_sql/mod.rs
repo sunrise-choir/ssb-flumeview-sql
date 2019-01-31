@@ -297,6 +297,7 @@ fn create_tables(connection: &Connection) -> Result<(), Error> {
 fn create_views(connection: &Connection) -> Result<(), Error> {
     create_messages_views(connection)?;
     create_links_views(connection)?;
+    create_abouts_views(connection)?;
     create_mentions_views(connection)?;
     Ok(())
 }
