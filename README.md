@@ -71,7 +71,7 @@ knex
 
 ### Building the db
 
-~ 10x faster!
+Roughly 10x faster!
 
 Sqlite db rebuild as fast as possible: 40s 
 
