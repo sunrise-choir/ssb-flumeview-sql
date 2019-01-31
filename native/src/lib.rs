@@ -20,13 +20,13 @@ extern crate rusqlite;
 
 use failure::Error;
 
+use itertools::Itertools;
 use node_napi::napi::*;
 use node_napi::napi_sys::*;
 use std::debug_assert;
 use std::os::raw::c_void;
 use std::ptr::{null, null_mut};
 use std::slice;
-use itertools::Itertools;
 
 use flumedb::OffsetLogIter;
 use flumedb::Sequence;
@@ -42,7 +42,12 @@ struct SsbQuery {
 }
 
 impl SsbQuery {
-    fn new(log_path: String, view_path: String, keys: Vec<SecretKey>, pub_key: &str) -> Result<SsbQuery, Error> {
+    fn new(
+        log_path: String,
+        view_path: String,
+        keys: Vec<SecretKey>,
+        pub_key: &str,
+    ) -> Result<SsbQuery, Error> {
         let view = FlumeViewSql::new(&view_path, keys, pub_key)?;
 
         Ok(SsbQuery { view, log_path })
@@ -75,10 +80,9 @@ impl SsbQuery {
             .map(|data| (data.id + latest, data.data_buffer)) //TODO log_latest might not be the right thing
             .chunks(1000)
             .into_iter()
-            .for_each(|chunk|{
+            .for_each(|chunk| {
                 self.view.append_batch(&chunk.collect_vec());
             })
-
     }
 }
 

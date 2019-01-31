@@ -9,22 +9,24 @@ use serde_json::Value;
 
 use private_box::SecretKey;
 
+mod abouts;
 mod authors;
 mod branches;
 mod contacts;
 mod keys;
 mod links;
-mod messages;
 mod mentions;
+mod messages;
 mod migrations;
+use self::abouts::*;
 use self::authors::*;
 use self::branches::*;
 use self::contacts::*;
 use self::keys::*;
 use self::links::*;
+use self::mentions::*;
 use self::messages::*;
 use self::migrations::*;
-use self::mentions::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SsbValue {
@@ -70,7 +72,11 @@ fn create_connection(path: &str) -> Result<Connection, Error> {
 }
 
 impl FlumeViewSql {
-    pub fn new(path: &str, secret_keys: Vec<SecretKey>, pub_key: &str) -> Result<FlumeViewSql, Error> {
+    pub fn new(
+        path: &str,
+        secret_keys: Vec<SecretKey>,
+        pub_key: &str,
+    ) -> Result<FlumeViewSql, Error> {
         let mut connection = create_connection(path)?;
 
         if let Ok(false) = is_db_up_to_date(&connection) {
@@ -173,7 +179,6 @@ impl FlumeViewSql {
     }
 }
 
-
 fn find_values_in_object_by_key<'a>(
     obj: &'a serde_json::Value,
     key: &str,
@@ -260,7 +265,8 @@ fn append_item(
         message_key_id,
         is_decrypted,
     )?;
-    insert_or_update_contacts(&connection, &message, message_key_id, is_decrypted);
+    insert_or_update_contacts(connection, &message, message_key_id, is_decrypted);
+    insert_abouts(connection, &message, message_key_id);
 
     Ok(())
 }
@@ -275,7 +281,6 @@ fn set_pragmas(connection: &Connection) {
 }
 
 fn create_tables(connection: &Connection) -> Result<(), Error> {
-
     create_migrations_tables(connection)?;
     create_messages_tables(connection)?;
     create_authors_tables(connection)?;
@@ -284,6 +289,7 @@ fn create_tables(connection: &Connection) -> Result<(), Error> {
     create_contacts_tables(connection)?;
     create_branches_tables(connection)?;
     create_mentions_tables(connection)?;
+    create_abouts_tables(connection)?;
 
     Ok(())
 }
@@ -302,6 +308,7 @@ fn create_indices(connection: &Connection) -> Result<(), Error> {
     create_keys_indices(connection)?;
     create_branches_indices(connection)?;
     create_authors_indices(connection)?;
+    create_abouts_indices(connection)?;
     create_mentions_indices(connection)?;
     Ok(())
 }

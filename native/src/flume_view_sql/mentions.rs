@@ -14,10 +14,11 @@ pub fn create_mentions_tables(connection: &Connection) -> Result<usize, Error> {
     )
 }
 
-
 pub fn insert_mentions(connection: &Connection, links: &[&serde_json::Value], message_key_id: i64) {
     let mut insert_link_stmt = connection
-        .prepare_cached("INSERT INTO mentions_raw (link_from_key_id, link_to_author_id) VALUES (?, ?)")
+        .prepare_cached(
+            "INSERT INTO mentions_raw (link_from_key_id, link_to_author_id) VALUES (?, ?)",
+        )
         .unwrap();
 
     links

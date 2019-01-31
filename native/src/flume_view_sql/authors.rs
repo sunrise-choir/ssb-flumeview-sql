@@ -34,7 +34,7 @@ pub fn create_authors_indices(connection: &Connection) -> Result<usize, Error> {
     create_is_me_index(connection)
 }
 
-fn create_is_me_index(connection: &Connection) -> Result<usize, Error>{
+fn create_is_me_index(connection: &Connection) -> Result<usize, Error> {
     trace!("Creating is_me index");
     connection.execute(
         "CREATE INDEX IF NOT EXISTS authors_is_me_index ON authors (is_me)",
