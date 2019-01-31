@@ -74,8 +74,11 @@ knex
 ~ 10x faster!
 
 Sqlite db rebuild as fast as possible: 40s 
+
 Sqlite db rebuild, chunks of 250, **running on patchwork's main thread without lagging the ui**: 60s  
+
 Flume rebuild of indexes used by patchwork: 404s
+
 
 NB: This is a bit hard to do an exact comparison. Expect these numbers to change.
 
