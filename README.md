@@ -1,13 +1,21 @@
-# ssb-flumeview-sql 
+# ssb-flume-follower-sql 
 
-> Node bindings to a sql flumeview of a ssb database 
+> (WIP) Node bindings to a sql view of a ssb database 
 
-- differs from the current idea of a flumeview
-  - doesn't plug into a js flume log, uses it's own internal rust based flumelog
+- sqlite3 based db
+- the flume offset log is the source of truth. This reads the offset log and builds the db from it.
   - does not modify the offset log.
-  - supports building the view in chunks to control cpu use and allow queries to be handled in between building the view.
-
-- supports querying the view, even if the view is behind the log.
+- clients using this module are free to create their own sqlite file in their application folder, _outside_ of the .ssb folder. Clients don't need to agree on flume index versions to run multiple clients at the same time. 
+- supports building the db in chunks to control cpu use. 
+- supports querying the db at any time. The db does not have to be up to date with the offset log. 
+- decrypts private messages.  
+- uses knex for powerful query building.
+- lots of knex helpers / sql views to use as building blocks for queries.
+- FAST. Fast to build the db. Fast to query. Benchmarked.
+- Friendly. We have a code of conduct and will enforce it.
+  - Found something missing from the docs? Can't understand the code? Found an un-tested edge case? Spotted a poorly named variable? Raise an issue! We'd love to help.
+- well tested
+- well documented
 
 ## Example
 
@@ -45,6 +53,13 @@ requestIdleCallback(function(deadline){
 // The query waiting for sequence number 1000 will eventually call back when enough items are added to the view.
 
 ```
+
+## Performance
+
+## Schema
+
+![schema](/docs/images/ssb-flumeview-sql.jpg)
+
 
 ## API
 
@@ -108,12 +123,9 @@ $ npm run prebuild
 - [x] remove since from the api
 - [ ] documentation needs to have the table structure so you can know how to query. Think this means that that rust needs to live in that project.
 - [ ] write convenience methods that wrap common queries.
-- [ ] more tests for typechecking arguments
 - [ ] propogate file open errors up to the js
 - [x] refactor structure of flume db. Pull out ssb specific stuff.
 - [x] refactor prebuild stuff
-- [ ] lessbot
-  - [ ] make a test project that has the server and a client with ssb-client + flume follower
 
 
 ### Cross compile
