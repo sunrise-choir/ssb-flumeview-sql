@@ -25,7 +25,7 @@ module.exports = function SsbDb (logPath, dbPath, secretKey, pubKey) {
     }
   })
 
-  var db = new SqlView(logPath, dbPath, secretKey)
+  var db = new SqlView(logPath, dbPath, secretKey, pubKey)
 
   var exports = {
     process,
