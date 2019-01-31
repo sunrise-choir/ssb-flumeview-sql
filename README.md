@@ -92,9 +92,11 @@ Roughly 65% of the offset log.
 
 Roughly 50% of the existing flume indexes.
 
-My offset log is 598MB, my sqlite db is 379MB.
+My Sqlite db is 379MB.
 
-My flumedb indexes are currently 771MB.
+My offset log is 598MB, 
+
+My flumedb indexes are 771MB.
 
 ## Schema
 
