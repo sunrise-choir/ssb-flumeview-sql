@@ -12,7 +12,7 @@
 - Decrypts private messages.  
 - Uses knex for powerful query building.
 - Lots of knex helpers / sql views to use as building blocks for queries.
-- [FAST](##Performance). Fast to build the db. Fast to query. Benchmarked.
+- [FAST](#Performance). Fast to build the db. Fast to query. Benchmarked.
 - Friendly. We have a code of conduct and will enforce it.
   - Found something missing from the docs? Can't understand the code? Found an un-tested edge case? Spotted a poorly named variable? Raise an issue! We'd love to help.
 - Well tested.
