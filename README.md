@@ -11,6 +11,7 @@
 - Supports processing the offset log in chunks to control cpu use. 
 - The [schema](#Schema) models all the common relationships between messages. This enables some powerful queries that have been hard to do in the existing stack. 
 - Decrypts private messages using [private-box](https://github.com/pietgeursen/private-box-rs) in rust.  
+  - Supports multiple secret keys. 
 - Lots of knex helpers / sql views to use as building blocks for queries.
 - [FAST](#Performance). Fast to build the db. Fast to query. Benchmarked.
 - Friendly. We have a [code of conduct](/code-of-conduct.md) and are commited to abiding by it.
@@ -72,16 +73,24 @@ knex
 
 ~ 10x faster!
 
-Sqlite db rebuild: 40s
+Sqlite db rebuild as fast as possible: 40s 
+Sqlite db rebuild, chunks of 250, **running on patchwork's main thread without lagging the ui**: 60s  
 Flume rebuild of indexes used by patchwork: 404s
 
 NB: This is a bit hard to do an exact comparison. Expect these numbers to change.
 
 ### Querying
 
+WIP.
+
 ### Disk use
 
-Roughly 65% of the offset log. My offset log is 598MB, by sqlite db is 379MB.
+Roughly 65% of the offset log. 
+
+Roughly 50% of the existing flume indexes.
+
+My offset log is 598MB, my sqlite db is 379MB.
+
 My flumedb indexes are currently 771MB.
 
 ## Schema
@@ -131,16 +140,6 @@ Dev Dependencies:
 ```
 $ npm run prebuild
 ```
-
-### Todo
-
-- [x] remove since from the api
-- [ ] documentation needs to have the table structure so you can know how to query. Think this means that that rust needs to live in that project.
-- [ ] write convenience methods that wrap common queries.
-- [ ] propogate file open errors up to the js
-- [x] refactor structure of flume db. Pull out ssb specific stuff.
-- [x] refactor prebuild stuff
-
 
 ### Cross compile
 
