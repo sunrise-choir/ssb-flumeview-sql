@@ -22,8 +22,8 @@ pub fn create_links_views(connection: &Connection) -> Result<usize, Error> {
         links_raw.id as id, 
         links_raw.link_from_key_id as link_from_key_id, 
         links_raw.link_to_key_id as link_to_key_id, 
-        keys.key as link_from, 
-        keys2.key as link_to
+        keys.key as link_from_key, 
+        keys2.key as link_to_key
         FROM links_raw 
         JOIN keys ON keys.id=links_raw.link_from_key_id
         JOIN keys AS keys2 ON keys2.id=links_raw.link_to_key_id

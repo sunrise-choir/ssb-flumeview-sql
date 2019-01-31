@@ -11,6 +11,8 @@ use private_box::SecretKey;
 
 mod abouts;
 mod authors;
+mod blob_links;
+mod blobs;
 mod branches;
 mod contacts;
 mod keys;
@@ -20,6 +22,8 @@ mod messages;
 mod migrations;
 use self::abouts::*;
 use self::authors::*;
+use self::blob_links::*;
+use self::blobs::*;
 use self::branches::*;
 use self::contacts::*;
 use self::keys::*;
@@ -256,6 +260,7 @@ fn append_item(
 
     insert_links(connection, links.as_slice(), message_key_id);
     insert_mentions(connection, links.as_slice(), message_key_id);
+    insert_blob_links(connection, links.as_slice(), message_key_id);
 
     insert_branches(connection, &message, message_key_id);
     insert_message(
@@ -290,6 +295,8 @@ fn create_tables(connection: &Connection) -> Result<(), Error> {
     create_branches_tables(connection)?;
     create_mentions_tables(connection)?;
     create_abouts_tables(connection)?;
+    create_blobs_tables(connection)?;
+    create_blob_links_tables(connection)?;
 
     Ok(())
 }
@@ -297,6 +304,7 @@ fn create_tables(connection: &Connection) -> Result<(), Error> {
 fn create_views(connection: &Connection) -> Result<(), Error> {
     create_messages_views(connection)?;
     create_links_views(connection)?;
+    create_blob_links_views(connection)?;
     create_abouts_views(connection)?;
     create_mentions_views(connection)?;
     Ok(())
@@ -305,6 +313,7 @@ fn create_views(connection: &Connection) -> Result<(), Error> {
 fn create_indices(connection: &Connection) -> Result<(), Error> {
     create_messages_indices(connection)?;
     create_links_indices(connection)?;
+    create_blob_links_indices(connection)?;
     create_contacts_indices(connection)?;
     create_keys_indices(connection)?;
     create_branches_indices(connection)?;
