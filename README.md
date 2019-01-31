@@ -9,7 +9,7 @@
 - Uses [knex](http://knexjs.org/) for powerful async queries.
 - Supports querying the db at any time. The db does not have to be up to date with the offset log. 
 - Supports processing the offset log in chunks to control cpu use. 
-- The [Schema](#Schema) models all the common relationships between messages. This enables some powerful queries that have been hard to do in the existing stack. 
+- The [schema](#Schema) models all the common relationships between messages. This enables some powerful queries that have been hard to do in the existing stack. 
 - Decrypts private messages using [private-box](https://github.com/pietgeursen/private-box-rs) in rust.  
 - Lots of knex helpers / sql views to use as building blocks for queries.
 - [FAST](#Performance). Fast to build the db. Fast to query. Benchmarked.
@@ -70,9 +70,19 @@ knex
 
 ### Building the db
 
+~ 10x faster!
+
+Sqlite db rebuild: 40s
+Flume rebuild of indexes used by patchwork: 404s
+
+NB: This is a bit hard to do an exact comparison. Expect these numbers to change.
+
 ### Querying
 
 ### Disk use
+
+Roughly 65% of the offset log. My offset log is 598MB, by sqlite db is 379MB.
+My flumedb indexes are currently 771MB.
 
 ## Schema
 
@@ -85,27 +95,6 @@ var SqlView = require('ssb-flumeview-sql')
 var sqlView = SqlView('/path/to/log.offset', '/path/to/view.sqlite') 
 ```
 
-### sqlView.query(opts = {}, cb)
-
-`opts` is mandatory and has some required and optional fields:
-
-- `opts.query` (required) - sql query string.
-
-- `opts.whenUpToSequence` (optional) - sequence number the view must be up to before running the query. Omitting this means the query will be executed immediately, even though the view might be behind the log.
-
-`cb` is a node-style, error first callback:
-
-```js
-function cb (err, results){
-  if(err){
-    //handle the error
-  }
-  
-  //results is an array
-  results.forEach(console.log)
-}
-```
-
 ### sqlView.process(opts = {})
 
 `opts` is mandatory and has one optional field:
@@ -113,6 +102,14 @@ function cb (err, results){
 - `opts.chunkSize` (optional) - Sets the maximum number of items to process. If this is omitted it will process all entries, bringing the view up to date with the log.
 
 - Note that processing will block this thread while executing. If you want to limit resource use of processing, use something like `requestIdleCallback` like in the example. Also be careful not to make `opts.chunkSize` too large. As a starting point, my machine processes 10000 entries in 140ms.
+
+### sqlView.getLatest()
+
+Gets the latest flume sequence value processed by the db.
+
+### sqlView.knex
+
+Returns a knex instance ready to do **read only** queries on the db.
 
 ## Install
 
