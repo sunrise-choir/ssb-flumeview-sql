@@ -86,6 +86,9 @@ NB: This is a bit hard to do an exact comparison. Expect these numbers to change
 
 WIP.
 
+From rust (not using knex) querying for all authors I block on a db of 100k messages:
+54 micro seconds.
+
 ### Disk use:
 
 Roughly 65% of the offset log. 
