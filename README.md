@@ -195,31 +195,25 @@ Dev Dependencies
   - dockcross
 
 Cross compiling is still a work in progress. Still todo:
-  - [ ] split out scripts to cross in build-native.sh
-  - [ ] add script to tar up cross compiled binding with correct prebuild compatible filename
-  - [ ] windows builds don't work
+- [ ] split out scripts to cross in build-native.sh
+- [ ] add script to tar up cross compiled binding with correct prebuild compatible filename
+- [ ] windows builds don't work
 
 ## Acknowledgments
 
-[@ahdinosaur](https://github.com/ahdinosaur) for orchestrating the sunrise choir. 
-
-[@mmckegg](https://github.com/mmckegg) for the infectious enthusiasm.
-
-[@mixmix](https://github.com/mixmix) for awesome feedback on the readme.
-
-[@dominictarr](https://github.com/dominictarr) for making it work before making it nice.
-
-[@noffle](https://github.com/noffle) for [common-readme](https://github.com/noffle/common-readme).
+- [@ahdinosaur](https://github.com/ahdinosaur) for orchestrating the sunrise choir. 
+- [@mmckegg](https://github.com/mmckegg) for the infectious enthusiasm.
+- [@mixmix](https://github.com/mixmix) for awesome feedback on the readme.
+- [@dominictarr](https://github.com/dominictarr) for making it work before making it nice.
+- [@noffle](https://github.com/noffle) for [common-readme](https://github.com/noffle/common-readme).
 
 All the lovely people on scuttlebutt who make it the place it is.
 
 ## See Also
 
-[flumedb](https://github.com/flumedb/flumedb)
-
-[ssbc](https://github.com/ssbc)
-
-[sunrise choir](https://github.com/sunrise-choir)
+- [flumedb](https://github.com/flumedb/flumedb)
+- [ssbc](https://github.com/ssbc)
+- [sunrise choir](https://github.com/sunrise-choir)
 
 ## [Code of Conduct](/code-of-conduct.md)
 
