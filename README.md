@@ -100,7 +100,13 @@ My flumedb indexes are 771MB.
 
 ## Schema
 
+Tables:
+
 ![schema](/docs/images/ssb-flumeview-sql.jpg)
+
+[Sql Views](https://en.wikipedia.org/wiki/View_(SQL))
+
+Pic coming soon...
 
 ## API
 
