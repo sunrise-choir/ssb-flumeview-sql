@@ -4,7 +4,7 @@
 
 A sql-based database for secure scuttlebutt, written in rust, with bindings to js
 
-This is conceptually very similar to a [flume-view](https://github.com/flumedb/flumedb#views) but it isn't compatible with the rest of flume.
+This is conceptually very similar to a [flume-view](https://github.com/flumedb/flumedb#views) but **it isn't a flume view that plugs into the rest of flume**.
 This module parses the [flume append only log file](https://github.com/flumedb/flumelog-offset) and inserts each message into a sql database.
 
 ## Features
@@ -14,11 +14,11 @@ This module parses the [flume append only log file](https://github.com/flumedb/f
   - uses [knex](http://knexjs.org/) for powerful async queries
 - Fast + flexible
   - built on Rust + [Sqlite3](http://sqlite.org)
-  - supports building of view in spare cpu time, so your application never chokes
+  - supports processing the log and inserting into the db in spare cpu time, so your application never chokes
   - bulding + queries are [FAST](#Performance) (benchmarked!)
 - Advanced features
   - query the view at any time - for when waiting for the view to be in sync isn't relevant
-  - supports multiple identities (multiple keypairs), with [decryption done with Rust](https://github.com/pietgeursen/private-box-rs)
+  - supports multiple identities (WIP) (multiple keypairs), with [decryption done with Rust](https://github.com/pietgeursen/private-box-rs)
   - supports multiple clients running different versions of this view, by giving you control over where this view is saved
 - Friendly. We have a [code of conduct](/code-of-conduct.md) and are commited to abiding by it.
   - Found something missing from the docs? Can't understand the code? Found an un-tested edge case? Spotted a poorly named variable? Raise an issue! We'd love to help.
