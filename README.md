@@ -75,7 +75,7 @@ Roughly 10x faster!
 
 Sqlite db rebuild as fast as possible: 40s 
 
-Sqlite db rebuild, chunks of 250, **running on patchwork's main thread without lagging the ui**: 60s  
+Sqlite db rebuild, chunks of 250, **running on patchwork's main thread without lagging the ui**: 64s.
 
 Flume rebuild of indexes used by patchwork: 404s
 
