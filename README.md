@@ -132,7 +132,7 @@ TBD if these are a good idea. They are syntactic sugar for common queries using 
 
 ### Content of my most recent 20 posts
 
-```
+```js
 knex.
   select(["content"])
   .from("messages_raw")
@@ -142,9 +142,28 @@ knex.
   .limit(20)
 ```
 
-### Content of my most recent posts, pages of 20.
+### Content of my most recent posts, pages of 20, third page.
 
-### All the authors that liked this message
+```js
+knex.
+  select(["content"])
+  .from("messages_raw")
+  .join("authors", "messages_raw.author_id", "authors.id" )
+  .where("authors.is_me", 1)
+  .orderBy("flume_seq", "desc")
+  .limit(20)
+  .offset(40)
+```
+### All the votes on this message
+
+```js
+  db.knex
+    .select()
+    .from('links')
+    .join('messages_raw', 'messages_raw.key_id', 'links.link_from_key_id')
+    .where('links.link_to_key', messageKey)
+    .where('content_type', 'vote')
+```
 
 ### Authors I block
 

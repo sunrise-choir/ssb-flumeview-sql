@@ -13,7 +13,7 @@ var publicKey = '@U5GvOKP/YUza9k53DSXxT0mk3PIrnyAmessvNfZl5E0=.ed25519'
 function createTestDb (logPath, dbPath) {
   rimraf.sync(dbPath)
   var db = Db(logPath, dbPath, secretKey, publicKey)
-  db.process({ chunkSize: 2000 })
+  db.process({ chunkSize: 10000 })
   return db
 }
 
@@ -34,6 +34,21 @@ test('content of my most recent 20 posts', function (t) {
         return result.author === publicKey
       }))
 
+      t.end()
+    })
+})
+
+test('all the votes on this message', function (t) {
+  var messageKey = '%WCQziqKuknTZvaPgl0JR0hMmR5GQ+fhJyu9BZpW95wI=.sha256'
+  db.knex
+    .select()
+    .from('links')
+    .join('messages_raw', 'messages_raw.key_id', 'links.link_from_key_id')
+    .where('links.link_to_key', messageKey)
+    .where('content_type', 'vote')
+    .asCallback(function (err, results) {
+      t.error(err)
+      t.equal(results.length, 1)
       t.end()
     })
 })
