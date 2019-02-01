@@ -49,15 +49,8 @@ const secret = ssbKeys.ssbSecretKeyToPrivateBoxSecret(keys)
 // Constructing a new sqlView doesn't do that much automatically. A new sqlite db is created if it doesn't exist. No indexing is happening automatically.
 const sqlView = SqlView(logPath, '/tmp/patchwork.sqlite3', secret, keys.id)
 
-// The sql view has the knex instance and some useful strings and knex modifiers attached.
-var { 
-  knex, 
-  modifiers, 
-  strings 
-  } = sqlView
-var { links } = strings //links is a string constant of the links table name.
-var { backLinksReferences } = modifiers
-var id = "%E1d7Dxu+fmyXB7zjOMfUbdLU8GuGLRQXdrCa0+oIajk=.sha256"
+// The sql view has the knex instance attached so you can do queries. 
+var { knex } = sqlView
 
 //Query for content of 20 most recent posts. 
 knex
