@@ -1,23 +1,27 @@
 # ssb-flume-follower-sql 
 
-> (WIP) A sql view of a ssb database that follows the offset log. Written in rust with bindings to js. 
+> work in progress
+A sql-based [flume view](https://github.com/flumedb/flumedb#architecture) for secure scuttlebutt, written in rust, with bindings to js
 
-- [Sqlite3](http://sqlite.org) based db
-- The [flume offset log](https://github.com/flumedb/flumelog-offset) is the source of truth. This module reads the offset log and builds the db from it.
-  - Does not modify the offset log.
-- Clients using this module are free to create their own sqlite file in their application folder, _outside_ of the .ssb folder. Clients don't need to agree on db versions to be able to run multiple clients at the same time. 
-- Uses [knex](http://knexjs.org/) for powerful async queries.
-- Supports querying the db at any time. The db does not have to be up to date with the offset log. 
-- Supports processing the offset log in chunks to control cpu use. 
-- The [schema](#Schema) models all the common relationships between messages. This enables some powerful queries that have been hard to do in the existing stack. 
-- Decrypts private messages using [private-box](https://github.com/pietgeursen/private-box-rs) in rust.  
-  - Supports multiple secret keys. 
-- Lots of knex helpers / sql views to use as building blocks for queries.
-- [FAST](#Performance). Fast to build the db. Fast to query. Benchmarked.
+_Flume views are secondary databases which are computed / derived from the core [immutable log](https://github.com/flumedb/flumelog-offset) at the heart of scuttlebutt._
+
+## Features
+
+- Easy to use
+  - [models all the common relationships](#Schema) between messages, enabling powerful queries that are generally hard to do
+  - uses [knex](http://knexjs.org/) for powerful async queries
+- Fast + flexible
+  - built on Rust + [Sqlite3](http://sqlite.org)
+  - supports building of view in spare cpu time, so your application never chokes
+  - bulding + queries are [FAST](#Performance) (benchmarked!)
+- Advanced features
+  - query the view at any time - for when waiting for the view to be in sync isn't relevant
+  - supports multiple identities (multiple keypairs), with [decryption done with Rust](https://github.com/pietgeursen/private-box-rs)
+  - supports multiple clients running different versions of this view, by giving you control over where this view is saved
 - Friendly. We have a [code of conduct](/code-of-conduct.md) and are commited to abiding by it.
   - Found something missing from the docs? Can't understand the code? Found an un-tested edge case? Spotted a poorly named variable? Raise an issue! We'd love to help.
-- Well tested.
-- Well documented.
+- Well tested
+- Well documented
 
 ## Example
 
