@@ -78,7 +78,7 @@ window.requestIdleCallback(function processMore (deadline) {
 })
 ```
 
-See more [example queries below](#More Example Queries)
+See more [example queries below](#more-example-queries)
 
 ## Schema
 
