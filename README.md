@@ -2,22 +2,22 @@
 
 > (work in progress :construction: ) A sql-based database for secure scuttlebutt, written in rust, with bindings to js
 
-This is conceptually very similar to a [flume-view](https://github.com/flumedb/flumedb#views) but **it isn't a flume view that plugs into the rest of flume**.[@mmckegg](https://github.com/mmckegg) wrote a [post](https://viewer.scuttlebot.io/%251bz0TXDuaM65KMTb8bgtrXuqD7L77baneTdoJ0EwRug%3D.sha256) about his dream of a "consensus free scuttlestack." This module intenionally isn't a flume view because we want clients to be able to take ownership of the indexes they need without needing consensus about how they modify the .ssb folder.
-
 This module parses the [flume append only log file](https://github.com/flumedb/flumelog-offset) and inserts each message into a sql database.
+
+This is conceptually very similar to a [flume-view](https://github.com/flumedb/flumedb#views) but **it isn't a flume view that plugs into the rest of flume**. [@mmckegg](https://github.com/mmckegg) wrote a [post](https://viewer.scuttlebot.io/%251bz0TXDuaM65KMTb8bgtrXuqD7L77baneTdoJ0EwRug%3D.sha256) about his dream of a "consensus free scuttlestack." This module intenionally isn't a flume view because we want clients to be able to take ownership of the indexes they need without needing consensus about how they modify the .ssb folder.
 
 ## Contents
 
 - [Features](#features)
 - [Example](#example)
 - [Schema](#schema)
+- [API](#api)
 - [More Example Queries](#more-example-queries)
 - [Performance](#performance)
 - [Development](#development)
 - [Acknowledgements](#acknowledgements)
 - [See Also](#see-also)
 - [Code of Conduct](#code-of-conduct)
-- [Licence](#licence)
 
 ## Features
 
@@ -40,7 +40,7 @@ This module parses the [flume append only log file](https://github.com/flumedb/f
 ## Example
 
 ```js
-const SqlView = require('ssb-flumeview-sql')
+const SqlView = require('ssb-flume-follower-sql')
 const config = // load ssb config 
 const keys =  // load ssb keys
 const logPath = Path.join(config.path, 'flume', 'log.offset')
@@ -101,7 +101,7 @@ See more [example queries below](#more-example-queries)
 ## API
 
 ```js
-var SqlView = require('ssb-flumeview-sql')
+var SqlView = require('ssb-flume-follower-sql')
 var sqlView = SqlView('/path/to/log.offset', '/path/to/view.sqlite', <pubKey>, <secreKey> ) 
 ```
 
@@ -119,7 +119,10 @@ Gets the latest flume sequence value processed by the db.
 
 ### sqlView.knex
 
-A knex instance ready to do **read only** queries on the db. TBD if I can get knex writes working. Sqlite theortically supports multiple db connections.
+A knex instance ready to do **read only** queries on the db. 
+
+- TBD if I can get knex writes working. Sqlite theortically supports multiple db connections.
+- TBD if you _should_ mess with the db. 
 
 ### sqlView.modifiers
 
@@ -127,9 +130,19 @@ TBD if these are a good idea. They are syntactic sugar for common queries using 
 
 ## More Example Queries
 
-### My most recent 20 posts
+### Content of my most recent 20 posts
 
-### My most recent posts, pages of 20.
+```
+knex.
+  select(["content"])
+  .from("messages_raw")
+  .join("authors", "messages_raw.author_id", "authors.id" )
+  .where("authors.is_me", 1)
+  .orderBy("flume_seq", "desc")
+  .limit(20)
+```
+
+### Content of my most recent posts, pages of 20.
 
 ### All the authors that liked this message
 
@@ -180,12 +193,13 @@ My Sqlite db is 379MB.
 My offset log is 598MB, 
 
 My flumedb indexes are 771MB.
+
 ## Install
 
 With [npm](https://npmjs.org/) installed, run
 
 ```
-$ npm install 
+$ npm install ssb-flume-follower-sql
 ```
 
 ## Development
