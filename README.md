@@ -1,9 +1,11 @@
 # ssb-flume-follower-sql 
 
 > work in progress
-A sql-based [flume view](https://github.com/flumedb/flumedb#architecture) for secure scuttlebutt, written in rust, with bindings to js
 
-_Flume views are secondary databases which are computed / derived from the core [immutable log](https://github.com/flumedb/flumelog-offset) at the heart of scuttlebutt._
+A sql-based database for secure scuttlebutt, written in rust, with bindings to js
+
+This is conceptually very similar to a [flume-view](https://github.com/flumedb/flumedb#views) but it isn't compatible with the rest of flume.
+This module parses the [flume append only log file](https://github.com/flumedb/flumelog-offset) and inserts each message into a sql database.
 
 ## Features
 
@@ -90,7 +92,7 @@ Pic coming soon...
 
 ```js
 var SqlView = require('ssb-flumeview-sql')
-var sqlView = SqlView('/path/to/log.offset', '/path/to/view.sqlite') 
+var sqlView = SqlView('/path/to/log.offset', '/path/to/view.sqlite', <pubKey>, <secreKey> ) 
 ```
 
 ### sqlView.process(opts = {})
@@ -107,7 +109,11 @@ Gets the latest flume sequence value processed by the db.
 
 ### sqlView.knex
 
-Returns a knex instance ready to do **read only** queries on the db.
+A knex instance ready to do **read only** queries on the db. TBD if I can get knex writes working. Sqlite theortically support multiple db connections.
+
+### sqlView.modifiers
+
+## More Example Queries
 
 ## Performance
 
@@ -160,7 +166,7 @@ Dev Dependencies:
   - cmake
 
 ```
-$ npm run prebuild
+$ ./build-native.sh
 ```
 
 ### Cross compile
