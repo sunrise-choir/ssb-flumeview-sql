@@ -205,6 +205,7 @@ Cross compiling is still a work in progress. Still todo:
 - [@mmckegg](https://github.com/mmckegg) for the infectious enthusiasm.
 - [@mixmix](https://github.com/mixmix) for awesome feedback on the readme.
 - [@dominictarr](https://github.com/dominictarr) for making it work before making it nice.
+- [@AljoschaMeyer](https://github.com/AljoschaMeyer) for making it nice before making it work.
 - [@noffle](https://github.com/noffle) for [common-readme](https://github.com/noffle/common-readme).
 
 All the lovely people on scuttlebutt who make it the place it is.
