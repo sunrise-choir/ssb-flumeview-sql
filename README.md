@@ -86,10 +86,6 @@ See more [example queries below](#more-example-queries)
 
 ![schema](/docs/images/ssb-flumeview-sql.jpg)
 
-### [Sql Views:](https://en.wikipedia.org/wiki/View_(SQL))
-
-Pic coming soon...
-
 ## API
 
 ```js
