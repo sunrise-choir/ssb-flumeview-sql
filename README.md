@@ -26,13 +26,37 @@ _Flume views are secondary databases which are computed / derived from the core 
 ## Example
 
 ```js
+const SqlView = require('ssb-flumeview-sql')
 const config = // load ssb config 
 const keys =  // load ssb keys
 const logPath = Path.join(config.path, 'flume', 'log.offset')
-const secret = ssbSecretKeyToPrivateBoxSecret(keys)
+const secret = ssbKeys.ssbSecretKeyToPrivateBoxSecret(keys)
 
+// Constructing a new sqlView doesn't do that much automatically. A new sqlite db is created if it doesn't exist. No indexing is happening automatically.
 const sqlView = SqlView(logPath, '/tmp/patchwork.sqlite3', secret, keys.id)
-// So far, nothing much has happened. A new sqlite db is created if it doesn't exist. No indexing is happening automatically.
+
+// The sql view has the knex instance and some useful strings and knex modifiers attached.
+var { 
+  knex, 
+  modifiers, 
+  strings 
+  } = sqlView
+var { links } = strings //links is a string constant of the links table name.
+var { backLinksReferences } = modifiers
+var id = "%E1d7Dxu+fmyXB7zjOMfUbdLU8GuGLRQXdrCa0+oIajk=.sha256"
+
+//Query for backlinks (same as backlinks references query used in patchwork)
+knex
+  .select([
+    'links.link_from as id',
+    'author',
+    'received_time as timestamp'
+  ])
+  .from(links)
+  .modify(backLinksReferences, id, knex)
+  .asCallback(function(err, result) {
+    console.log(result) // => [{id: "...", author: "...", timestamp: "..."}]
+  })
 
 // Process data from the offset log into the db as it comes in, but throttled so it's not too cpu hungry. (Assumes you can use `requestIdleCallback`)
 window.requestIdleCallback(function processMore (deadline) {
@@ -50,60 +74,7 @@ window.requestIdleCallback(function processMore (deadline) {
 
   sqlViewLatest = sqlView.getLatest()
 })
-
-//Query for backlinks (same as backlinks references query used in patchwork)
-
-var { knex, modifiers, strings } = sqlView
-var { links } = strings
-var { backLinksReferences } = modifiers
-var id = "%E1d7Dxu+fmyXB7zjOMfUbdLU8GuGLRQXdrCa0+oIajk=.sha256"
-
-knex
-  .select([
-    'links.link_from as id',
-    'author',
-    'received_time as timestamp'
-  ])
-  .from(links)
-  .modify(backLinksReferences, id, knex)
-  .asCallback(function(err, result) {
-    console.log(result)
-  })
 ```
-
-## Performance
-
-### Building the db:
-
-Roughly 10x faster!
-
-Sqlite db rebuild as fast as possible: 40s 
-
-Sqlite db rebuild, chunks of 250, **running on patchwork's main thread without lagging the ui**: 64s.
-
-Flume rebuild of indexes used by patchwork: 404s
-
-
-NB: This is a bit hard to do an exact comparison. Expect these numbers to change.
-
-### Querying:
-
-WIP.
-
-From rust (not using knex) querying for all authors I block on a db of 100k messages:
-54 micro seconds.
-
-### Disk use:
-
-Roughly 65% of the offset log. 
-
-Roughly 50% of the existing flume indexes.
-
-My Sqlite db is 379MB.
-
-My offset log is 598MB, 
-
-My flumedb indexes are 771MB.
 
 ## Schema
 
@@ -138,6 +109,39 @@ Gets the latest flume sequence value processed by the db.
 
 Returns a knex instance ready to do **read only** queries on the db.
 
+## Performance
+
+### Building the db:
+
+Roughly 10x faster!
+
+Sqlite db rebuild as fast as possible: 40s 
+
+Sqlite db rebuild, chunks of 250, **running on patchwork's main thread without lagging the ui**: 64s.
+
+Flume rebuild of indexes used by patchwork: 404s
+
+
+NB: This is a bit hard to do an exact comparison. Expect these numbers to change.
+
+### Querying:
+
+WIP.
+
+From rust (not using knex) querying for all authors I block on a db of 100k messages:
+54 micro seconds.
+
+### Disk use:
+
+Roughly 65% of the offset log. 
+
+Roughly 50% of the existing flume indexes.
+
+My Sqlite db is 379MB.
+
+My offset log is 598MB, 
+
+My flumedb indexes are 771MB.
 ## Install
 
 With [npm](https://npmjs.org/) installed, run
@@ -146,7 +150,7 @@ With [npm](https://npmjs.org/) installed, run
 $ npm install 
 ```
 
-## Building
+## Development
 
 ### Build for your environment
 
@@ -173,7 +177,11 @@ Cross compiling is still a work in progress. Still todo:
 
 ## Acknowledgments
 
+@mixmix for awesome feedback on the readme.
+
 ## See Also
+
+## [Code of Conduct](/code-of-conduct.md)
 
 ## License
 
