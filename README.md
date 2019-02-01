@@ -78,6 +78,8 @@ window.requestIdleCallback(function processMore (deadline) {
 })
 ```
 
+See more [example queries below](#More Example Queries)
+
 ## Schema
 
 ### Tables:
@@ -109,11 +111,33 @@ Gets the latest flume sequence value processed by the db.
 
 ### sqlView.knex
 
-A knex instance ready to do **read only** queries on the db. TBD if I can get knex writes working. Sqlite theortically support multiple db connections.
+A knex instance ready to do **read only** queries on the db. TBD if I can get knex writes working. Sqlite theortically supports multiple db connections.
 
 ### sqlView.modifiers
 
+TBD if these are a good idea. They are syntactic sugar for common queries using [knex modify](https://knexjs.org/#Builder-modify). I'll know more once I write a whole lot of queries for patchwork.
+
 ## More Example Queries
+
+### My most recent 20 posts
+
+### My most recent posts, pages of 20.
+
+### All the authors that liked this message
+
+### Authors I block
+
+### All the about messages about me
+
+### All recent posts by me and people I follow (1 hop)
+
+### How many mentions do I have since a given flume sequence
+
+### What messages reference a given blob
+
+### Which authors reference a given blob
+
+### Which blobs haven't been referenced by me or people I follow in the last year.
 
 ## Performance
 
