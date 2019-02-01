@@ -59,17 +59,15 @@ var { links } = strings //links is a string constant of the links table name.
 var { backLinksReferences } = modifiers
 var id = "%E1d7Dxu+fmyXB7zjOMfUbdLU8GuGLRQXdrCa0+oIajk=.sha256"
 
-//Query for backlinks (same as backlinks references query used in patchwork)
+//Query for content of 20 most recent posts. 
 knex
-  .select([
-    'links.link_from as id',
-    'author',
-    'received_time as timestamp'
-  ])
-  .from(links)
-  .modify(backLinksReferences, id, knex)
+  .select(['content'])
+  .from('messages_raw')
+  .join('authors', 'messages_raw.author_id', 'authors.id')
+  .orderBy('flume_seq', 'desc')
+  .limit(20)
   .asCallback(function(err, result) {
-    console.log(result) // => [{id: "...", author: "...", timestamp: "..."}]
+    console.log(result) 
   })
 
 // Process data from the offset log into the db as it comes in, but throttled so it's not too cpu hungry. (Assumes you can use `requestIdleCallback`)
@@ -133,36 +131,37 @@ TBD if these are a good idea. They are syntactic sugar for common queries using 
 ### Content of my most recent 20 posts
 
 ```js
-knex.
-  select(["content"])
-  .from("messages_raw")
-  .join("authors", "messages_raw.author_id", "authors.id" )
-  .where("authors.is_me", 1)
-  .orderBy("flume_seq", "desc")
+db.knex
+  .select(['content', 'author'])
+  .from('messages_raw')
+  .join('authors', 'messages_raw.author_id', 'authors.id')
+  .where('authors.is_me', 1)
+  .orderBy('flume_seq', 'desc')
   .limit(20)
 ```
 
 ### Content of my most recent posts, pages of 20, third page.
 
 ```js
-knex.
-  select(["content"])
-  .from("messages_raw")
-  .join("authors", "messages_raw.author_id", "authors.id" )
-  .where("authors.is_me", 1)
-  .orderBy("flume_seq", "desc")
+db.knex
+  .select(['content', 'author'])
+  .from('messages_raw')
+  .join('authors', 'messages_raw.author_id', 'authors.id')
+  .where('authors.is_me', 1)
+  .orderBy('flume_seq', 'desc')
   .limit(20)
   .offset(40)
 ```
+
 ### All the votes on this message
 
 ```js
-  db.knex
-    .select()
-    .from('links')
-    .join('messages_raw', 'messages_raw.key_id', 'links.link_from_key_id')
-    .where('links.link_to_key', messageKey)
-    .where('content_type', 'vote')
+db.knex
+  .select(['content'])
+  .from('links')
+  .join('messages_raw', 'messages_raw.key_id', 'links.link_from_key_id')
+  .where('links.link_to_key', messageKey)
+  .where('content_type', 'vote')
 ```
 
 ### Authors I block
