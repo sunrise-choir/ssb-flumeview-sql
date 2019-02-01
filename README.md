@@ -69,7 +69,7 @@ knex
 
 ## Performance
 
-### Building the db
+### Building the db:
 
 Roughly 10x faster!
 
@@ -82,11 +82,11 @@ Flume rebuild of indexes used by patchwork: 404s
 
 NB: This is a bit hard to do an exact comparison. Expect these numbers to change.
 
-### Querying
+### Querying:
 
 WIP.
 
-### Disk use
+### Disk use:
 
 Roughly 65% of the offset log. 
 
