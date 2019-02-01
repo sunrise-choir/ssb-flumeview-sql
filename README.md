@@ -2,8 +2,22 @@
 
 > (work in progress :construction: ) A sql-based database for secure scuttlebutt, written in rust, with bindings to js
 
-This is conceptually very similar to a [flume-view](https://github.com/flumedb/flumedb#views) but **it isn't a flume view that plugs into the rest of flume**.
+This is conceptually very similar to a [flume-view](https://github.com/flumedb/flumedb#views) but **it isn't a flume view that plugs into the rest of flume**.[@mmckegg](https://github.com/mmckegg) wrote a [post](https://viewer.scuttlebot.io/%251bz0TXDuaM65KMTb8bgtrXuqD7L77baneTdoJ0EwRug%3D.sha256) about his dream of a "consensus free scuttlestack." This module intenionally isn't a flume view because we want clients to be able to take ownership of the indexes they need without needing consensus about how they modify the .ssb folder.
+
 This module parses the [flume append only log file](https://github.com/flumedb/flumelog-offset) and inserts each message into a sql database.
+
+## Contents
+
+- [Features](#features)
+- [Example](#example)
+- [Schema](#schema)
+- [More Example Queries](#more-example-queries)
+- [Performance](#performance)
+- [Development](#development)
+- [Acknowledgements](#acknowledgements)
+- [See Also](#see-also)
+- [Code of Conduct](#code-of-conduct)
+- [Licence](#licence)
 
 ## Features
 
