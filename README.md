@@ -89,21 +89,16 @@ See more [example queries below](#more-example-queries)
 
 ![schema](/docs/images/ssb-flumeview-sql.jpg)
 
-## API
-
-```js
-var SqlView = require('ssb-flume-follower-sql')
-var sqlView = SqlView('/path/to/log.offset', '/path/to/view.sqlite', <pubKey>, <secreKey> ) 
-```
-
 ### Views
 
 [sql views](https://en.wikipedia.org/wiki/View_(SQL)) of the db that do joins you're likely to use.
 
+#### `messages`
 
-#### Messages
+![messages-view](/docs/images/messages-view.jpg)
 
-Query:
+Query that generates view:
+
 ```sql
 SELECT 
   flume_seq,
@@ -128,7 +123,23 @@ LEFT JOIN keys AS fork_keys ON fork_keys.id=messages_raw.fork_id
 JOIN authors ON authors.id=messages_raw.author_id
 ```
 
-![messages-view](/docs/images/messages-view.jpg)
+#### `links`
+
+#### `abouts`
+
+#### `contacts`
+
+#### `mentions`
+
+
+
+
+## API
+
+```js
+var SqlView = require('ssb-flume-follower-sql')
+var sqlView = SqlView('/path/to/log.offset', '/path/to/view.sqlite', <pubKey>, <secreKey> ) 
+```
 
 
 ### sqlView.process(opts = {})
