@@ -93,7 +93,7 @@ See more [example queries below](#more-example-queries)
 
 [sql views](https://en.wikipedia.org/wiki/View_(SQL)) of the db that do joins you're likely to use.
 
-#### `messages`
+#### messages
 
 ![messages-view](/docs/images/messages-view.jpg)
 
@@ -192,30 +192,33 @@ db.knex
   .offset(40)
 ```
 
-### All the votes on this message
-
-```js
-db.knex
-  .select(['content'])
-  .from('links')
-  .join('messages_raw', 'messages_raw.key_id', 'links.link_from_key_id')
-  .where('links.link_to_key', messageKey)
-  .where('content_type', 'vote')
-```
-
 ### Authors I block
+
+TODO
 
 ### All the about messages about me
 
+TODO
+
 ### All recent posts by me and people I follow (1 hop)
+
+TODO
 
 ### How many mentions do I have since a given flume sequence
 
+TODO
+
 ### What messages reference a given blob
+
+TODO
 
 ### Which authors reference a given blob
 
+TODO
+
 ### Which blobs haven't been referenced by me or people I follow in the last year.
+
+TODO
 
 ## Performance
 
