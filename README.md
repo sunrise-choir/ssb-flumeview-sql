@@ -15,7 +15,7 @@ This is conceptually very similar to a [flume-view](https://github.com/flumedb/f
 - [More Example Queries](#more-example-queries)
 - [Performance](#performance)
 - [Development](#development)
-- [Acknowledgements](#acknowledgements)
+- [Acknowledgments](#acknowledgments)
 - [See Also](#see-also)
 - [Code of Conduct](#code-of-conduct)
 
@@ -49,7 +49,7 @@ const secret = ssbKeys.ssbSecretKeyToPrivateBoxSecret(keys)
 // Constructing a new sqlView doesn't do that much automatically. A new sqlite db is created if it doesn't exist. No indexing is happening automatically.
 const sqlView = SqlView(logPath, '/tmp/patchwork.sqlite3', secret, keys.id)
 
-// The sql view has the knex instance attached so you can do queries. 
+// The sql view has the knex instance 
 var { knex } = sqlView
 
 //Query for content of 20 most recent posts. 
@@ -95,6 +95,41 @@ See more [example queries below](#more-example-queries)
 var SqlView = require('ssb-flume-follower-sql')
 var sqlView = SqlView('/path/to/log.offset', '/path/to/view.sqlite', <pubKey>, <secreKey> ) 
 ```
+
+### Views
+
+[sql views](https://en.wikipedia.org/wiki/View_(SQL)) of the db that do joins you're likely to use.
+
+
+#### Messages
+
+Query:
+```sql
+SELECT 
+  flume_seq,
+  key_id,
+  seq,
+  received_time,
+  asserted_time,
+  root_id,
+  fork_id,
+  author_id,
+  content,
+  content_type,
+  is_decrypted,
+  keys.key as key,
+  root_keys.key as root,
+  fork_keys.key as fork,
+  authors.author as author
+FROM messages_raw 
+JOIN keys ON keys.id=messages_raw.key_id
+LEFT JOIN keys AS root_keys ON root_keys.id=messages_raw.root_id
+LEFT JOIN keys AS fork_keys ON fork_keys.id=messages_raw.fork_id
+JOIN authors ON authors.id=messages_raw.author_id
+```
+
+![messages-view](/docs/images/messages-view.jpg)
+
 
 ### sqlView.process(opts = {})
 
