@@ -13,6 +13,7 @@ This is conceptually very similar to a [flume-view](https://github.com/flumedb/f
 - [Schema](#schema)
 - [API](#api)
 - [More Example Queries](#more-example-queries)
+- [Hints For Developing Queries](#hints-for-developing-queries)
 - [Performance](#performance)
 - [Development](#development)
 - [Acknowledgments](#acknowledgments)
@@ -253,6 +254,13 @@ TODO
 ### Which blobs haven't been referenced by me or people I follow in the last year.
 
 TODO
+
+## Hints for developing queries:
+
+- install `sqlite3` on your system.
+- in the sqlite command prompt run:
+  - `> .timer on`. The timer lets you see how long your queries are taking. There are often multiple ways to write a query. Try them out to see which one is faster. If something is slow, pay attention to which columns are indexed (marked with `IDX` in the schema diagram.) 
+  - `> .headers on`. Gives you column header names at the top of your results.
 
 ## Performance
 
