@@ -194,17 +194,51 @@ db.knex
 
 ### Authors I block
 
-TODO
+```js
+db.knex
+  .select(['author'])
+  .from('contacts_raw')
+  .join('authors', 'contacts_raw.author_id', 'authors.id')
+  .where('authors.is_me', 1)
+  .where('state', -1)
+```
+
+### Authors I follow
+
+```js
+db.knex
+  .select(['author'])
+  .from('contacts_raw')
+  .join('authors', 'contacts_raw.author_id', 'authors.id')
+  .where('authors.is_me', 1)
+  .where('state', 1)
+```
+
+### How many mentions do I have since a given flume sequence
+
+```js
+var last_seq_num = 12345
+
+db.knex('mentions_raw')
+  .count('id')
+  .join('authors', 'mentions_raw.link_to_author_id', 'authors.id')
+  .join('messages_raw', 'mentions_raw.link_from_key_id', 'messages_raw.key_id')
+  .where('authors.is_me', 1)
+  .where('messages_raw.flume_seq', '>', last_seq_num )
+```
 
 ### All the about messages about me
 
-TODO
+```js
+db.knex
+  .select(['content'])
+  .from('abouts_raw')
+  .join('authors', 'abouts_raw.link_to_author_id', 'authors.id')
+  .join('messages_raw', 'abouts_raw.link_from_key_id', 'messages_raw.key_id')
+  .where('authors.is_me', 1)
+```
 
 ### All recent posts by me and people I follow (1 hop)
-
-TODO
-
-### How many mentions do I have since a given flume sequence
 
 TODO
 
