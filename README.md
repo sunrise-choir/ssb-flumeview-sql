@@ -259,8 +259,8 @@ TODO
 
 - install `sqlite3` on your system.
 - in the sqlite command prompt run:
-  - `> .timer on`. The timer lets you see how long your queries are taking. There are often multiple ways to write a query. Try them out to see which one is faster. If something is slow, pay attention to which columns are indexed (marked with `IDX` in the schema diagram.) 
-  - `> .headers on`. Gives you column header names at the top of your results.
+  - `sqlite> .timer on`. The timer lets you see how long your queries are taking. There are often multiple ways to write a query. Try them out to see which one is faster. If something is slow, pay attention to which columns are indexed (marked with `IDX` in the schema diagram.) 
+  - `sqlite> .headers on`. Gives you column header names at the top of your results.
 
 ## Performance
 
