@@ -71,7 +71,7 @@ impl SsbQuery {
 
         let items_to_take = match num_items {
             -1 => std::usize::MAX,
-            n @ _ => n as usize,
+            n => n as usize,
         };
 
         OffsetLogIter::<u32, std::fs::File>::with_starting_offset(file, latest)

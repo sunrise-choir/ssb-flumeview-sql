@@ -164,7 +164,7 @@ impl FlumeViewSql {
                         if res == "ok" {
                             return Ok(());
                         }
-                        return Err(FlumeViewSqlError::DbFailedIntegrityCheck {}.into());
+                        Err(FlumeViewSqlError::DbFailedIntegrityCheck {}.into())
                     })
             })
     }
@@ -188,10 +188,9 @@ fn find_values_in_object_by_key<'a>(
     key: &str,
     values: &mut Vec<&'a serde_json::Value>,
 ) {
-    match obj.get(key) {
-        Some(val) => values.push(val),
-        _ => (),
-    };
+    if let Some(val) = obj.get(key) {
+        values.push(val)
+    }
 
     match obj {
         Value::Array(arr) => {

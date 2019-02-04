@@ -41,7 +41,7 @@ pub fn insert_links(connection: &Connection, links: &[&serde_json::Value], messa
         .iter()
         .filter(|link| link.is_string())
         .map(|link| link.as_str().unwrap())
-        .filter(|link| link.starts_with("%"))
+        .filter(|link| link.starts_with('%'))
         .map(|link| find_or_create_key(&connection, link).unwrap())
         .for_each(|link_id| {
             insert_link_stmt
@@ -60,5 +60,4 @@ fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
         "CREATE INDEX IF NOT EXISTS links_id_index on links_raw (link_to_key_id, link_from_key_id)",
         NO_PARAMS,
     )
-    .map_err(|err| err.into())
 }
