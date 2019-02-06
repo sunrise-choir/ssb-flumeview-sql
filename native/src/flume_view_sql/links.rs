@@ -57,7 +57,11 @@ pub fn create_links_indices(connection: &Connection) -> Result<usize, Error> {
 fn create_links_to_index(conn: &Connection) -> Result<usize, Error> {
     trace!("Creating links index");
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS links_id_index on links_raw (link_to_key_id, link_from_key_id)",
+        "CREATE INDEX IF NOT EXISTS links_to_id_index on links_raw (link_to_key_id, link_from_key_id)",
+        NO_PARAMS,
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS links_from_id_index on links_raw (link_from_key_id, link_to_key_id)",
         NO_PARAMS,
     )
 }

@@ -20,6 +20,8 @@ mod links;
 mod mentions;
 mod messages;
 mod migrations;
+pub mod queries;
+mod votes; //TODO un pub
 use self::abouts::*;
 use self::authors::*;
 use self::blob_links::*;
@@ -31,6 +33,8 @@ use self::links::*;
 use self::mentions::*;
 use self::messages::*;
 use self::migrations::*;
+use self::queries::*;
+use self::votes::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SsbValue {
@@ -54,7 +58,7 @@ pub enum FlumeViewSqlError {
 }
 
 pub struct FlumeViewSql {
-    connection: Connection,
+    pub connection: Connection,
     secret_keys: Vec<SecretKey>,
 }
 
@@ -254,12 +258,16 @@ fn append_item(
 
     let message_key_id = find_or_create_key(&connection, &message.key).unwrap();
 
-    let mut links = Vec::new();
-    find_values_in_object_by_key(&message.value.content, "link", &mut links);
-
-    insert_links(connection, links.as_slice(), message_key_id);
-    insert_mentions(connection, links.as_slice(), message_key_id);
-    insert_blob_links(connection, links.as_slice(), message_key_id);
+    match &message.value.content["type"] {
+        Value::String(type_string) if type_string == "vote" => {}
+        _ => {
+            let mut links = Vec::new();
+            find_values_in_object_by_key(&message.value.content, "link", &mut links);
+            insert_links(connection, links.as_slice(), message_key_id);
+            insert_mentions(connection, links.as_slice(), message_key_id);
+            insert_blob_links(connection, links.as_slice(), message_key_id);
+        }
+    }
 
     insert_branches(connection, &message, message_key_id);
     insert_message(
@@ -270,6 +278,7 @@ fn append_item(
         is_decrypted,
     )?;
     insert_or_update_contacts(connection, &message, message_key_id, is_decrypted);
+    insert_or_update_votes(connection, &message, message_key_id);
     insert_abouts(connection, &message, message_key_id);
 
     Ok(())
@@ -296,6 +305,7 @@ fn create_tables(connection: &Connection) -> Result<(), Error> {
     create_abouts_tables(connection)?;
     create_blobs_tables(connection)?;
     create_blob_links_tables(connection)?;
+    create_votes_tables(connection)?;
 
     Ok(())
 }
@@ -306,6 +316,7 @@ fn create_views(connection: &Connection) -> Result<(), Error> {
     create_blob_links_views(connection)?;
     create_abouts_views(connection)?;
     create_mentions_views(connection)?;
+    create_votes_indices(connection)?;
     Ok(())
 }
 

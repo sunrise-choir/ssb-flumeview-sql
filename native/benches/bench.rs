@@ -18,6 +18,7 @@ use flumedb::offset_log::OffsetCodec;
 use flumedb::offset_log::OffsetLogIter;
 use itertools::Itertools;
 use private_box::SecretKey;
+use ssb_sql_napi::flume_view_sql::queries::back_link_references;
 use ssb_sql_napi::FlumeViewSql;
 
 const NUM_ENTRIES: u32 = 100000;
@@ -135,6 +136,23 @@ fn all_messages_by_type(c: &mut Criterion) {
     });
 }
 
+fn backlink_ref(c: &mut Criterion) {
+    let offset_filename = "/home/piet/.ssb/flume/log.offset";
+    let db_filename = "/tmp/test_messages_by_type.sqlite3";
+
+    let mut view = create_test_db(NUM_ENTRIES as usize, offset_filename, db_filename);
+
+    c.bench_function("back_link_references", move |b| {
+        b.iter(|| {
+            let links = back_link_references(
+                &view.connection,
+                "%ZEuQdC7OBxDgRg2Vv/VgjArRIpE5YwIMo6ufXqaWaGg=.sha256",
+                0.0,
+            );
+            assert_eq!(links.unwrap().len(), 1);
+        })
+    });
+}
 fn all_messages_by_author(c: &mut Criterion) {
     let offset_filename = "/home/piet/.ssb/flume/log.offset";
     let db_filename = "/tmp/test_messages_by_author.sqlite3";
@@ -154,6 +172,11 @@ criterion_group! {
     targets = flume_view_sql_insert, flume_view_sql_insert_piets_entire_log_with_decryption, flume_view_sql_insert_piets_entire_log
 }
 
-criterion_group!(sql, all_messages_by_type, all_messages_by_author);
+criterion_group!(
+    sql,
+    backlink_ref,
+    all_messages_by_type,
+    all_messages_by_author
+);
 
-criterion_main!(sql_full_log, sql);
+criterion_main!(sql, sql_full_log);

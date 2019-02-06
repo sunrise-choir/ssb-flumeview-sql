@@ -63,7 +63,11 @@ pub fn create_blob_links_indices(connection: &Connection) -> Result<usize, Error
 fn create_blob_links_index(conn: &Connection) -> Result<usize, Error> {
     trace!("Creating blob links index");
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS blob_links_index on blob_links_raw (link_to_blob_id, link_from_key_id)",
+        "CREATE INDEX IF NOT EXISTS blob_links_index_to on blob_links_raw (link_to_blob_id)",
+        NO_PARAMS,
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS blob_links_index_from on blob_links_raw (link_from_key_id)",
         NO_PARAMS,
     )
 }

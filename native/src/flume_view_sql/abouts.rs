@@ -45,7 +45,15 @@ pub fn insert_abouts(connection: &Connection, message: &SsbMessage, message_key_
 pub fn create_abouts_indices(connection: &Connection) -> Result<usize, Error> {
     trace!("Creating abouts index");
     connection.execute(
-        "CREATE INDEX IF NOT EXISTS abouts_raw_index on abouts_raw (link_from_key_id, link_to_key_id, link_to_author_id )",
+        "CREATE INDEX IF NOT EXISTS abouts_raw_from_index on abouts_raw (link_from_key_id)",
+        NO_PARAMS,
+    )?;
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS abouts_raw_key_index on abouts_raw (link_to_key_id)",
+        NO_PARAMS,
+    )?;
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS abouts_raw_author_index on abouts_raw (link_to_author_id )",
         NO_PARAMS,
     )
 }

@@ -69,15 +69,15 @@ function whereMessageIsNotPrivate (query) {
 }
 
 function joinLinksFrom (query) {
-  query.join(links, 'links.link_from', key)
+  query.join(links, 'links.link_from_key', key)
 }
 
 function joinMessagesOnLinksFrom (query) {
-  query.join(messages, 'links.link_from', key)
+  query.join(messages, 'links.link_from_key', key)
 }
 
 function joinLinksTo (query) {
-  query.join(links, 'links.link_to', key)
+  query.join(links, 'links.link_to_key', key)
 }
 
 function backLinksReferences (query, id, knex) {
@@ -88,7 +88,7 @@ function backLinksReferences (query, id, knex) {
     .modify(whereMessageIsNotType, 'vote')
     .modify(whereMessageIsNotType, 'tag')
     .where(
-      'links.link_to',
+      'links.link_to_key',
       id
     )
 }

@@ -60,7 +60,11 @@ pub fn create_mentions_indices(connection: &Connection) -> Result<usize, Error> 
 fn create_mentions_to_index(conn: &Connection) -> Result<usize, Error> {
     trace!("Creating mentions index");
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS mentions_id_index on mentions_raw (link_to_author_id, link_from_key_id)",
+        "CREATE INDEX IF NOT EXISTS mentions_id_to_index on mentions_raw (link_to_author_id, link_from_key_id)",
+        NO_PARAMS,
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS mentions_id_from_index on mentions_raw (link_from_key_id, link_to_author_id)",
         NO_PARAMS,
     )
 }
