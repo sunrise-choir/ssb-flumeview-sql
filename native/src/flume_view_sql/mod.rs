@@ -259,7 +259,9 @@ fn append_item(
     let message_key_id = find_or_create_key(&connection, &message.key).unwrap();
 
     match &message.value.content["type"] {
-        Value::String(type_string) if type_string == "vote" => {}
+        Value::String(type_string) if type_string == "vote" => {
+            insert_or_update_votes(connection, &message);
+        }
         _ => {
             let mut links = Vec::new();
             find_values_in_object_by_key(&message.value.content, "link", &mut links);
@@ -278,7 +280,6 @@ fn append_item(
         is_decrypted,
     )?;
     insert_or_update_contacts(connection, &message, message_key_id, is_decrypted);
-    insert_or_update_votes(connection, &message, message_key_id);
     insert_abouts(connection, &message, message_key_id);
 
     Ok(())

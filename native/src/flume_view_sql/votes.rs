@@ -15,7 +15,7 @@ pub fn create_votes_tables(connection: &Connection) -> Result<usize, Error> {
     )
 }
 
-pub fn insert_or_update_votes(connection: &Connection, message: &SsbMessage, _message_key_id: i64) {
+pub fn insert_or_update_votes(connection: &Connection, message: &SsbMessage) {
     if let Value::Number(value) = &message.value.content["vote"]["value"] {
         if let Value::String(link) = &message.value.content["vote"]["link"] {
             let author_id = find_or_create_author(&connection, &message.value.author).unwrap();
