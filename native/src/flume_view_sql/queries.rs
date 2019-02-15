@@ -103,9 +103,9 @@ mod test {
 
         let file = std::fs::File::open(offset_filename.to_string()).unwrap();
 
-        OffsetLogIter::<u32, std::fs::File>::new(file)
+        OffsetLogIter::<u32>::new(file)
             .take(num_entries)
-            .map(|data| (data.id, data.data_buffer))
+            .map(|data| (data.offset, data.data))
             .chunks(1000 as usize)
             .into_iter()
             .for_each(|chunk| {

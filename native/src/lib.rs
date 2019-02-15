@@ -74,10 +74,10 @@ impl SsbQuery {
             n => n as usize,
         };
 
-        OffsetLogIter::<u32, std::fs::File>::with_starting_offset(file, latest)
+        OffsetLogIter::<u32>::with_starting_offset(file, latest)
             .skip(num_to_skip)
             .take(items_to_take)
-            .map(|data| (data.id + latest, data.data_buffer)) //TODO log_latest might not be the right thing
+            .map(|data| (data.offset + latest, data.data)) //TODO log_latest might not be the right thing
             .chunks(1000)
             .into_iter()
             .for_each(|chunk| {

@@ -22,7 +22,7 @@ private-box = "0.4.5"
 base64 = "0.10.0"
 itertools = "0.8.0"
 node_napi = { git = "https://github.com/sunrise-choir/node-napi" }
-flumedb = { git = "https://github.com/sunrise-choir/flumedb-rs" }
+flumedb = { git = "https://github.com/sunrise-choir/flumedb-rs", version = "0.1.1" }
 
 [dependencies.rusqlite]
 version = "0.16.0"

@@ -23,7 +23,7 @@ pub fn insert_or_update_votes(connection: &Connection, message: &SsbMessage) {
 
             if value.as_i64().unwrap() == 1 {
                 connection
-                    .prepare_cached("REPLACE INTO votes_raw (link_from_author_id, link_to_key_id) VALUES (?, ?)")
+                    .prepare_cached("INSERT INTO votes_raw (link_from_author_id, link_to_key_id) VALUES (?, ?)")
                     .unwrap()
                     .execute(&[&author_id, &link_to_key_id])
                     .unwrap();

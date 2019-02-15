@@ -14,7 +14,6 @@ extern crate ssb_sql_napi;
 
 use base64::{decode, encode};
 use flumedb::flume_log::FlumeLog;
-use flumedb::offset_log::OffsetCodec;
 use flumedb::offset_log::OffsetLogIter;
 use itertools::Itertools;
 use private_box::SecretKey;
@@ -30,9 +29,9 @@ fn create_test_db(num_entries: usize, offset_filename: &str, db_filename: &str) 
 
     let file = std::fs::File::open(offset_filename.to_string()).unwrap();
 
-    OffsetLogIter::<u32, std::fs::File>::new(file)
+    OffsetLogIter::<u32>::new(file)
         .take(num_entries)
-        .map(|data| (data.id, data.data_buffer))
+        .map(|data| (data.offset, data.data))
         .chunks(NUM_ENTRIES as usize)
         .into_iter()
         .for_each(|chunk| {
@@ -53,8 +52,8 @@ fn flume_view_sql_insert_piets_entire_log(c: &mut Criterion) {
             let mut view = FlumeViewSql::new(db_filename, keys, "").unwrap();
 
             let file = std::fs::File::open(offset_filename.to_string()).unwrap();
-            OffsetLogIter::<u32, std::fs::File>::new(file)
-                .map(|data| (data.id, data.data_buffer))
+            OffsetLogIter::<u32>::new(file)
+                .map(|data| (data.offset, data.data))
                 .chunks(NUM_ENTRIES as usize)
                 .into_iter()
                 .for_each(|chunk| {
@@ -85,8 +84,8 @@ fn flume_view_sql_insert_piets_entire_log_with_decryption(c: &mut Criterion) {
                 let mut view = FlumeViewSql::new(db_filename, keys, "").unwrap();
 
                 let file = std::fs::File::open(offset_filename.to_string()).unwrap();
-                OffsetLogIter::<u32, std::fs::File>::new(file)
-                    .map(|data| (data.id, data.data_buffer))
+                OffsetLogIter::<u32>::new(file)
+                    .map(|data| (data.offset, data.data))
                     .chunks(NUM_ENTRIES as usize)
                     .into_iter()
                     .for_each(|chunk| {
@@ -111,9 +110,9 @@ fn flume_view_sql_insert(c: &mut Criterion) {
 
             //TODO: this is ok for a benchmark but uses lots of memory.
             //Better would be to create a transaction and then append in a for_each loop.
-            OffsetLogIter::<u32, std::fs::File>::new(file)
+            OffsetLogIter::<u32>::new(file)
                 .take(NUM_ENTRIES as usize)
-                .map(|data| (data.id, data.data_buffer))
+                .map(|data| (data.offset, data.data))
                 .chunks(NUM_ENTRIES as usize)
                 .into_iter()
                 .for_each(|chunk| {

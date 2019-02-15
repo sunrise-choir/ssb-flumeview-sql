@@ -258,6 +258,7 @@ fn append_item(
 
     let message_key_id = find_or_create_key(&connection, &message.key).unwrap();
 
+    // votes are a kind of backlink, but we want to put them in their own table.
     match &message.value.content["type"] {
         Value::String(type_string) if type_string == "vote" => {
             insert_or_update_votes(connection, &message);
