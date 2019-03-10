@@ -1,6 +1,6 @@
 {
   "name": "ssb-flumeview-sql",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Node bindings to a sql flumeview on a ssb database",
   "main": "index.js",
   "author": "Piet Geursen <pietgeursen@gmail.com>",
@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ssbrs/ssb-legacy-msg-napi.git"
+    "url": "https://github.com/sunrise-choir/ssb-flumeview-sql.git"
   },
   "scripts": {
     "install": "prebuild-install -r napi -t 3 || npm run build-rs",
