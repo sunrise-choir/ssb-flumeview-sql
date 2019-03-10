@@ -6,44 +6,26 @@ SODIUM_REL_INSTALL_DIR="/install_dir"
 SODIUM_INSTALL_DIR="${SODIUM_DIR}${SODIUM_REL_INSTALL_DIR}"
 SODIUM_LIB_DIR="${SODIUM_INSTALL_DIR}/lib"
 
-DOCKER_CROSS_WORK_DIR="/work"
-DOCKER_CROSS_SODIUM_INSTALL_DIR="${DOCKER_CROSS_WORK_DIR}${SODIUM_REL_INSTALL_DIR}"
-
-DOCKER_CROSS_SCRIPT_NAME="dockcross"
-DOCKER_CROSS_SCRIPT="${CARGO_MAKE_WORKING_DIRECTORY}/${DOCKER_CROSS_SCRIPT_NAME}"
-
-CROSS_SODIUM_LIB_DIR="/project${SODIUM_REL_DIR}${SODIUM_REL_INSTALL_DIR}/lib"
-
 #### DEFAULT TASK ####
 
-[tasks.cross]
+[tasks.build]
+clear = true
 dependencies = [
-		"cross_compile_sodium",
-		"cross_compile_rust",
-		"cross_compile_napi_binding"
+		"compile_sodium",
+		"compile_rust",
+		"compile_napi_binding"
 ]
 
-#### CROSS COMPILING ####
-
-[tasks.dockercross_download]
-script = [
-	"docker pull dockcross/${DOCKER_CROSS_IMAGE_NAME}"
+[tasks.clean]
+dependencies = [
+	"clean_cmake"
 ]
-
-[tasks.dockercross_create_script]
-script = [
-	"docker run --rm dockcross/${DOCKER_CROSS_IMAGE_NAME}> ./${DOCKER_CROSS_SCRIPT_NAME}",
-	"chmod +x ./${DOCKER_CROSS_SCRIPT_NAME}"
-]
-
 
 #### RUST ####
 
-[tasks.cross_compile_rust]
+[tasks.compile_rust]
 script = [
-	"SODIUM_LIB_DIR=${CROSS_SODIUM_LIB_DIR}",
-	"cross build --release --target ${CROSS_TRIPLE}",
-	"cp target/${CROSS_TRIPLE}/release/libssb_sql_napi.* target/release"
+	"cargo build --release"
 ]
 
 [tasks.format]
@@ -51,20 +33,18 @@ install_crate = "rustfmt"
 command = "cargo"
 args = ["fmt", "--", "--write-mode=overwrite"]
 
-[tasks.cross_clean]
-script = [
-	"cargo clean",
-	"rm -rf Makefile, CMakeCache.txt, CMakeFiles",
-	"rm -rf libsodium/install_dir"
-]
-
 #### NAPI ####
 
-[tasks.cross_compile_napi_binding]
+[tasks.compile_napi_binding]
 script = [
-		"${DOCKER_CROSS_SCRIPT} cmake -DCMAKE_BUILD_TYPE=Release .",
-		"${DOCKER_CROSS_SCRIPT} make",
+		"cmake -DCMAKE_BUILD_TYPE=Release .",
+		"make",
 		"mv libbinding.so ../build/Release/binding.node",
+]
+
+[tasks.clean_cmake]
+script = [
+	"rm -rf CMakeCache.txt CMakeFiles Makefile"
 ]
 
 #### SODIUM ####
@@ -84,15 +64,15 @@ command = "git"
 args = ["-C",  "${SODIUM_DIR}","checkout", "origin/stable"]
 dependencies = ["sodium_fetch"]
 
-[tasks.cross_compile_sodium]
+[tasks.compile_sodium]
 condition_script = [
 	"test ! -e ${SODIUM_LIB_DIR}/libsodium.a"
 ] 
 script = [
 	"cd ${SODIUM_DIR}",
-	"${DOCKER_CROSS_SCRIPT} ./autogen.sh",
-	"${DOCKER_CROSS_SCRIPT} ./configure --prefix=${DOCKER_CROSS_SODIUM_INSTALL_DIR} --disable-shared --enable-static --disable-pie --host=${DOCKER_CROSS_TRIPLE}",
-	"${DOCKER_CROSS_SCRIPT} make -j4",
-	"${DOCKER_CROSS_SCRIPT} make install",
+	"./autogen.sh",
+	"./configure --prefix=${SODIUM_DIR} --disable-shared --enable-static --disable-pie",
+	"make -j4",
+	"make install",
 ]
-dependencies = ["dockercross_create_script", "sodium_checkout"]
+dependencies = ["sodium_checkout"]
