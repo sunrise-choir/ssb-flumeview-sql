@@ -4,7 +4,7 @@
   "description": "Node bindings to a sql flumeview on a ssb database",
   "main": "index.js",
   "author": "Piet Geursen <pietgeursen@gmail.com>",
-  "license": "AGPL3",
+  "license": "LGPL-3.0",
   "binary": {
     "napi_versions": [
       3

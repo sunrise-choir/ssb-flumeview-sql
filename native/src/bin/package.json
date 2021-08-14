@@ -8,7 +8,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "LGPL-3.0",
   "dependencies": {
     "jayson": "^2.1.1",
     "pull-notify": "^0.1.1",

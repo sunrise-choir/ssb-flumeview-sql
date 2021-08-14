@@ -350,4 +350,4 @@ All the lovely people on scuttlebutt who make it the place it is.
 
 ## License
 
-AGPL3
+LGPL-3.0

@@ -2,7 +2,7 @@
 name = "ssb-sql-napi"
 version = "1.0.0"
 authors = ["Piet Geursen <pietgeursen@gmail.com>"]
-license = "AGPL3"
+license = "LGPL-3.0"
 
 [lib]
 name = "ssb_sql_napi"
